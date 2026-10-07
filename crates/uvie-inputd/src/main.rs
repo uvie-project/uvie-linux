@@ -18,6 +18,7 @@ mod keymap;
 mod keys_linux;
 mod tray;
 mod vdev;
+mod xsel;
 
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
