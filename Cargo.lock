@@ -4982,6 +4982,7 @@ dependencies = [
  "arboard",
  "evdev",
  "futures-lite",
+ "image",
  "ksni",
  "libc",
  "serde_json",

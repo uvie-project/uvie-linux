@@ -17,6 +17,10 @@ sudo install -Dm755 target/release/uvie-inputd /usr/local/bin/uvie-inputd
 sudo install -Dm755 target/release/uvie-ui /usr/local/bin/uvie-ui
 sudo install -Dm644 packaging/uvie-ui.desktop \
     /usr/local/share/applications/uvie-ui.desktop
+# App icon (Icon=uvie in the .desktop file)
+sudo install -Dm644 assets/logo.png \
+    /usr/local/share/icons/hicolor/256x256/apps/uvie.png
+sudo gtk-update-icon-cache /usr/local/share/icons/hicolor 2>/dev/null || true
 
 # udev rule + input group (daemon needs both)
 sudo install -Dm644 packaging/99-uvie.rules /etc/udev/rules.d/99-uvie.rules

@@ -37,8 +37,39 @@ impl Default for TrayShared {
     }
 }
 
-/// 32x32 ARGB icon: blue rounded square with a white "V".
+/// Tray icon: the UVie logo (org avatar) decoded at startup and
+/// downscaled to 32x32 ARGB. Falls back to the drawn "V" icon when the
+/// decode fails.
 fn icon_pixmap() -> ksni::Icon {
+    logo_pixmap().unwrap_or_else(drawn_pixmap)
+}
+
+fn logo_pixmap() -> Option<ksni::Icon> {
+    let img = image::load_from_memory_with_format(
+        include_bytes!("../../../assets/logo.png"),
+        image::ImageFormat::Png,
+    )
+    .ok()?;
+    let small = img
+        .resize_exact(32, 32, image::imageops::FilterType::Lanczos3)
+        .to_rgba8();
+    let mut data = vec![0u8; 32 * 32 * 4];
+    for (i, px) in small.pixels().enumerate() {
+        // ksni wants big-endian ARGB32: A R G B per pixel.
+        data[i * 4] = px[3];
+        data[i * 4 + 1] = px[0];
+        data[i * 4 + 2] = px[1];
+        data[i * 4 + 3] = px[2];
+    }
+    Some(ksni::Icon {
+        width: 32,
+        height: 32,
+        data,
+    })
+}
+
+/// 32x32 ARGB icon: blue rounded square with a white "V".
+fn drawn_pixmap() -> ksni::Icon {
     let (w, h) = (32i32, 32i32);
     let mut data = vec![0u8; (w * h * 4) as usize];
     for y in 0..h {
