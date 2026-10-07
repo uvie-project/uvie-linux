@@ -1,0 +1,4 @@
+# UVie input daemon: let the `input` group create virtual keyboards.
+# Install: sudo install -m644 99-uvie.rules /etc/udev/rules.d/
+#          sudo udevadm control --reload && sudo udevadm trigger
+KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"

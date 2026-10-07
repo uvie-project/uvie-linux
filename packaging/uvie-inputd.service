@@ -1,0 +1,17 @@
+# systemd --user unit for the UVie input daemon.
+# Install: install -Dm644 uvie-inputd.service \
+#            ~/.config/systemd/user/uvie-inputd.service
+#          systemctl --user enable --now uvie-inputd
+[Unit]
+Description=UVie Vietnamese input daemon (evdev grab + uinput injection)
+Documentation=https://github.com/uvie-project/uvie-linux
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/uvie-inputd
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=default.target

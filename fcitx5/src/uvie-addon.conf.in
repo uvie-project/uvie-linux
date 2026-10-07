@@ -1,0 +1,12 @@
+[Addon]
+Name=UVie Wrapper For Fcitx
+Category=InputMethod
+Version=@PROJECT_VERSION@
+Enabled=True
+Library=libuvie
+Type=SharedLibrary
+OnDemand=True
+Configurable=False
+
+[Addon/Dependencies]
+0=core:@REQUIRED_FCITX_VERSION@

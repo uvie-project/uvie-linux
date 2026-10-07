@@ -1,0 +1,7 @@
+/target
+/build-ibus
+/build-fcitx5
+Cargo.lock.bk
+*.o
+*.so
+*.deb
