@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=UVie Settings
+Name[vi]=Cài đặt UVie
+Comment=Configure the UVie Vietnamese input method
+Comment[vi]=Cấu hình bộ gõ tiếng Việt UVie
+Exec=uvie-ui
+Icon=uvie
+Categories=Settings;Utility;
+Keywords=vietnamese;input;telex;vni;
+StartupNotify=true

@@ -1,0 +1,6 @@
+[InputMethod]
+Name=UVie
+Icon=fcitx-uvie
+LangCode=vi
+Addon=uvie
+Configurable=False

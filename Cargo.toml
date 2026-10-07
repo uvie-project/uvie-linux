@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/uvie-core",
+    "crates/uvie-inputd",
+    "crates/uvie-ui",
+    "crates/uvie-ffi",
+]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/uvie-project/uvie-linux"
+
+[workspace.dependencies]
+uvie = { git = "https://github.com/uvie-project/uvie-rs", tag = "v2.8.1" }
+uvie-core = { path = "crates/uvie-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

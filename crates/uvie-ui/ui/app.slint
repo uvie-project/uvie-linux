@@ -1,0 +1,285 @@
+// UVie settings — Linux mirror of the uvie-mac/uvie-win settings window.
+// Same six-pane layout: Tổng quan / Bàn phím / Macro / Ứng dụng /
+// Nâng cao / Giới thiệu.
+
+import { Button, Switch, ComboBox, LineEdit, ListView, ScrollView,
+         VerticalBox, HorizontalBox, GroupBox, CheckBox } from "std-widgets.slint";
+
+export struct MacroRow { trigger: string, expansion: string }
+
+component RowLabel inherits Text {
+    vertical-alignment: center;
+}
+
+component Toggle inherits Switch {
+    height: 24px;
+}
+
+export component AppWindow inherits Window {
+    title: "UVie — Cài đặt";
+    min-width: 740px;
+    min-height: 500px;
+    preferred-width: 740px;
+    preferred-height: 520px;
+
+    // ---- state (bound from Rust) ----
+    in-out property <int> page: 0;
+    in-out property <bool> enabled: true;
+    in-out property <int> method: 0;            // 0 telex 1 vni 2 simple-telex
+    in-out property <string> hotkey: "Ctrl+Shift+Z";
+    in-out property <bool> launch-at-login;
+    in-out property <bool> quick-start;
+    in-out property <bool> quick-telex;
+    in-out property <bool> modern-orthography;
+    in-out property <bool> relaxed-coda;
+    in-out property <bool> english-override;
+    in-out property <bool> auto-capitalize;
+    in-out property <bool> per-app-language;
+    in-out property <bool> macro-enabled;
+    in-out property <int> injection-mode: 2;    // 0 unicode-hex 1 clipboard 2 auto
+    in-out property <int> rewrite-mode: 0;      // 0 backspace 1 select-overwrite
+    in-out property <[MacroRow]> macros;
+    in-out property <[string]> excluded-apps;
+
+    callback save-clicked();
+    callback add-macro(string, string);
+    callback remove-macro(int);
+    callback add-excluded(string);
+    callback remove-excluded(int);
+    callback open-repo();
+
+    property <[string]> sections: ["Tổng quan", "Bàn phím", "Macro", "Ứng dụng", "Nâng cao", "Giới thiệu"];
+
+    HorizontalBox {
+        padding: 0;
+        spacing: 0;
+
+        // ---- sidebar ----
+        Rectangle {
+            width: 170px;
+            background: #2b2b2b;
+            VerticalLayout {
+                padding: 12px;
+                spacing: 4px;
+                for name[i] in root.sections: Rectangle {
+                    height: 36px;
+                    border-radius: 6px;
+                    background: root.page == i ? #3d6fd1 : (side-touch.has-hover ? #3a3a3a : transparent);
+                    side-touch := TouchArea {
+                        clicked => { root.page = i; }
+                    }
+                    Text {
+                        x: 14px;
+                        text: name;
+                        color: white;
+                        vertical-alignment: center;
+                    }
+                }
+                Rectangle { vertical-stretch: 1; }
+            }
+        }
+
+        // ---- content ----
+        Rectangle {
+            background: #1e1e1e;
+            VerticalBox {
+                padding: 18px;
+                spacing: 0;
+
+                ScrollView {
+                    vertical-stretch: 1;
+
+                    // ===== Tổng quan =====
+                    if root.page == 0: VerticalBox {
+                        padding: 4px;
+                        spacing: 14px;
+                        Text { text: "Tổng quan"; font-size: 20px; font-weight: 700; color: white; }
+                        HorizontalBox {
+                            spacing: 10px;
+                            RowLabel { text: "Bật UVie"; color: #ddd; horizontal-stretch: 1; }
+                            Toggle { checked <=> root.enabled; }
+                        }
+                        HorizontalBox {
+                            spacing: 10px;
+                            RowLabel { text: "Kiểu gõ"; color: #ddd; horizontal-stretch: 1; }
+                            ComboBox {
+                                width: 220px;
+                                model: ["Telex", "VNI", "Simple Telex"];
+                                current-index <=> root.method;
+                            }
+                        }
+                        HorizontalBox {
+                            spacing: 10px;
+                            RowLabel { text: "Phím tắt chuyển Việt/Anh"; color: #ddd; horizontal-stretch: 1; }
+                            LineEdit {
+                                width: 220px;
+                                text <=> root.hotkey;
+                                placeholder-text: "Ctrl+Shift+Z";
+                            }
+                        }
+                        HorizontalBox {
+                            spacing: 10px;
+                            RowLabel { text: "Khởi động cùng hệ thống"; color: #ddd; horizontal-stretch: 1; }
+                            Toggle { checked <=> root.launch-at-login; }
+                        }
+                        Rectangle { height: 8px; }
+                        Text {
+                            text: "Cài đặt áp dụng ngay cho daemon đang chạy (tự nạp lại khi lưu).";
+                            color: #888; wrap: word-wrap;
+                        }
+                    }
+
+                    // ===== Bàn phím =====
+                    if root.page == 1: VerticalBox {
+                        padding: 4px;
+                        spacing: 14px;
+                        Text { text: "Bàn phím"; font-size: 20px; font-weight: 700; color: white; }
+                        HorizontalBox {
+                            RowLabel { text: "Gõ tắt đầu từ (j→gi, f→ph, w→qu)"; color: #ddd; horizontal-stretch: 1; }
+                            Toggle { checked <=> root.quick-start; }
+                        }
+                        HorizontalBox {
+                            RowLabel { text: "Gõ tắt Telex (cc→ch, gg→gi…)"; color: #ddd; horizontal-stretch: 1; }
+                            Toggle { checked <=> root.quick-telex; }
+                        }
+                        HorizontalBox {
+                            RowLabel { text: "Chính tả hiện đại (đặt dấu)"; color: #ddd; horizontal-stretch: 1; }
+                            Toggle { checked <=> root.modern-orthography; }
+                        }
+                        HorizontalBox {
+                            RowLabel { text: "Nới lỏng luật âm cuối"; color: #ddd; horizontal-stretch: 1; }
+                            Toggle { checked <=> root.relaxed-coda; }
+                        }
+                        HorizontalBox {
+                            RowLabel { text: "Bỏ qua từ tiếng Anh"; color: #ddd; horizontal-stretch: 1; }
+                            Toggle { checked <=> root.english-override; }
+                        }
+                        HorizontalBox {
+                            RowLabel { text: "Tự động viết hoa đầu câu"; color: #ddd; horizontal-stretch: 1; }
+                            Toggle { checked <=> root.auto-capitalize; }
+                        }
+                    }
+
+                    // ===== Macro =====
+                    if root.page == 2: VerticalBox {
+                        padding: 4px;
+                        spacing: 14px;
+                        Text { text: "Macro"; font-size: 20px; font-weight: 700; color: white; }
+                        HorizontalBox {
+                            RowLabel { text: "Bật gõ tắt macro"; color: #ddd; horizontal-stretch: 1; }
+                            Toggle { checked <=> root.macro-enabled; }
+                        }
+                        ListView {
+                            vertical-stretch: 1;
+                            for row[i] in root.macros: HorizontalBox {
+                                spacing: 8px;
+                                RowLabel { text: row.trigger; color: #ddd; width: 140px; }
+                                RowLabel { text: "→ " + row.expansion; color: #aaa; horizontal-stretch: 1; }
+                                Button {
+                                    text: "Xoá";
+                                    clicked => { root.remove-macro(i); }
+                                }
+                            }
+                        }
+                        HorizontalBox {
+                            spacing: 8px;
+                            trigger-in := LineEdit { width: 140px; placeholder-text: "vd: sdt"; }
+                            expansion-in := LineEdit { horizontal-stretch: 1; placeholder-text: "nội dung mở rộng"; }
+                            Button {
+                                text: "Thêm";
+                                clicked => {
+                                    root.add-macro(trigger-in.text, expansion-in.text);
+                                    trigger-in.text = "";
+                                    expansion-in.text = "";
+                                }
+                            }
+                        }
+                    }
+
+                    // ===== Ứng dụng =====
+                    if root.page == 3: VerticalBox {
+                        padding: 4px;
+                        spacing: 14px;
+                        Text { text: "Ứng dụng"; font-size: 20px; font-weight: 700; color: white; }
+                        HorizontalBox {
+                            RowLabel { text: "Nhớ ngôn ngữ theo ứng dụng (X11)"; color: #ddd; horizontal-stretch: 1; }
+                            Toggle { checked <=> root.per-app-language; }
+                        }
+                        Text { text: "Ứng dụng bỏ qua (không can thiệp):"; color: #bbb; }
+                        ListView {
+                            vertical-stretch: 1;
+                            for app[i] in root.excluded-apps: HorizontalBox {
+                                spacing: 8px;
+                                RowLabel { text: app; color: #ddd; horizontal-stretch: 1; }
+                                Button { text: "Xoá"; clicked => { root.remove-excluded(i); } }
+                            }
+                        }
+                        HorizontalBox {
+                            spacing: 8px;
+                            app-in := LineEdit { horizontal-stretch: 1; placeholder-text: "tên tiến trình / WM_CLASS, vd: chromium"; }
+                            Button {
+                                text: "Thêm";
+                                clicked => {
+                                    root.add-excluded(app-in.text);
+                                    app-in.text = "";
+                                }
+                            }
+                        }
+                    }
+
+                    // ===== Nâng cao =====
+                    if root.page == 4: VerticalBox {
+                        padding: 4px;
+                        spacing: 14px;
+                        Text { text: "Nâng cao"; font-size: 20px; font-weight: 700; color: white; }
+                        HorizontalBox {
+                            RowLabel { text: "Chế độ nhập ký tự có dấu"; color: #ddd; horizontal-stretch: 1; }
+                            ComboBox {
+                                width: 260px;
+                                model: ["Ctrl+Shift+U (unicode hex)", "Clipboard + dán", "Tự động"];
+                                current-index <=> root.injection-mode;
+                            }
+                        }
+                        HorizontalBox {
+                            RowLabel { text: "Cách xoá khi viết lại từ"; color: #ddd; horizontal-stretch: 1; }
+                            ComboBox {
+                                width: 260px;
+                                model: ["Backspace", "Chọn rồi ghi đè (Chromium)"];
+                                current-index <=> root.rewrite-mode;
+                            }
+                        }
+                        Text {
+                            text: "Chọn rồi ghi đè tự động áp dụng cho trình duyệt Chromium/Chrome/Edge — cùng workaround như bản macOS/Windows.";
+                            color: #888; wrap: word-wrap;
+                        }
+                    }
+
+                    // ===== Giới thiệu =====
+                    if root.page == 5: VerticalBox {
+                        padding: 4px;
+                        spacing: 14px;
+                        Text { text: "UVie for Linux"; font-size: 22px; font-weight: 700; color: white; }
+                        Text {
+                            text: "Bộ gõ tiếng Việt Telex/VNI cho X11 và mọi Wayland compositor (kể cả GNOME) qua evdev + uinput.";
+                            color: #bbb; wrap: word-wrap;
+                        }
+                        Button { text: "GitHub — uvie-project/uvie-linux"; clicked => { root.open-repo(); } }
+                        Rectangle { vertical-stretch: 1; }
+                    }
+                }
+
+                // ---- save bar ----
+                Rectangle { height: 10px; }
+                HorizontalBox {
+                    spacing: 10px;
+                    Rectangle { horizontal-stretch: 1; }
+                    Button {
+                        text: "Lưu";
+                        primary: true;
+                        clicked => { root.save-clicked(); }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,24 @@
+[package]
+name = "uvie-inputd"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "UVie Linux input daemon: evdev keyboard grab -> uvie engine -> uinput injection"
+
+[[bin]]
+name = "uvie-inputd"
+path = "src/main.rs"
+
+[dependencies]
+uvie-core.workspace = true
+serde_json.workspace = true
+evdev = "0.12"
+libc = "0.2"
+xkbcommon = "0.8"
+xcb = "1"
+ksni = { version = "0.3", default-features = false, features = ["async-io"] }
+futures-lite = "2"
+tokio = { version = "1", features = ["rt", "macros"] }
+arboard = { version = "3", features = ["wayland-data-control"] }

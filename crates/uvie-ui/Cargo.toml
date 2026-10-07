@@ -1,0 +1,21 @@
+[package]
+name = "uvie-ui"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "UVie settings window (Slint) — edits ~/.config/uvie/*.json"
+
+[[bin]]
+name = "uvie-ui"
+path = "src/main.rs"
+
+[dependencies]
+uvie-core.workspace = true
+serde_json.workspace = true
+slint = "1.8"
+open = "5"
+
+[build-dependencies]
+slint-build = "1.8"
