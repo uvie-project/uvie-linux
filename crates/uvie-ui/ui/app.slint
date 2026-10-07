@@ -92,6 +92,7 @@ export component AppWindow inherits Window {
     in-out property <int> rewrite-mode: 0;      // 0 backspace 1 select-overwrite
     in-out property <[MacroRow]> macros;
     in-out property <[string]> excluded-apps;
+    in property <string> version;
 
     callback save-clicked();
     callback add-macro(string, string);
@@ -158,7 +159,7 @@ export component AppWindow inherits Window {
                 }
                 Rectangle { vertical-stretch: 1; }
                 Text {
-                    text: "uvie-project/uvie-linux";
+                    text: "Phiên bản " + root.version;
                     color: Theme.text-dim;
                     font-size: 10px;
                     horizontal-alignment: left;
@@ -216,7 +217,7 @@ export component AppWindow inherits Window {
                             }
                         }
                         Hint {
-                            text: "Cài đặt áp dụng ngay cho daemon đang chạy — tự nạp lại khi bấm Lưu.";
+                            text: "Cài đặt có hiệu lực ngay sau khi bấm Lưu — không cần khởi động lại.";
                         }
                         Rectangle { vertical-stretch: 1; }
                     }
@@ -317,8 +318,9 @@ export component AppWindow inherits Window {
                         PageTitle { title: "Ứng dụng"; }
                         Card {
                             title: "Theo ứng dụng";
+                            subtitle: "Chỉ áp dụng trên màn hình X11.";
                             HorizontalBox {
-                                RowLabel { text: "Nhớ ngôn ngữ theo ứng dụng (X11)"; horizontal-stretch: 1; }
+                                RowLabel { text: "Nhớ ngôn ngữ cho từng ứng dụng"; horizontal-stretch: 1; }
                                 Toggle { checked <=> root.per-app-language; }
                             }
                         }
@@ -338,7 +340,7 @@ export component AppWindow inherits Window {
                             }
                             HorizontalBox {
                                 spacing: 8px;
-                                app-in := LineEdit { horizontal-stretch: 1; placeholder-text: "tên tiến trình / WM_CLASS, vd: chromium"; }
+                                app-in := LineEdit { horizontal-stretch: 1; placeholder-text: "tên ứng dụng, vd: chromium"; }
                                 Button {
                                     text: "Thêm";
                                     clicked => {
@@ -359,24 +361,24 @@ export component AppWindow inherits Window {
                         Card {
                             title: "Nhập liệu";
                             HorizontalBox {
-                                RowLabel { text: "Chế độ nhập ký tự có dấu"; horizontal-stretch: 1; }
+                                RowLabel { text: "Cách chèn ký tự có dấu"; horizontal-stretch: 1; }
                                 ComboBox {
                                     width: 260px;
-                                    model: ["Ctrl+Shift+U (unicode hex)", "Clipboard + dán", "Tự động"];
+                                    model: ["Nhập mã Unicode (Ctrl+Shift+U)", "Dán qua bộ nhớ tạm", "Tự động"];
                                     current-index <=> root.injection-mode;
                                 }
                             }
                             HorizontalBox {
-                                RowLabel { text: "Cách xoá khi viết lại từ"; horizontal-stretch: 1; }
+                                RowLabel { text: "Cách xoá khi sửa lại từ"; horizontal-stretch: 1; }
                                 ComboBox {
                                     width: 260px;
-                                    model: ["Backspace", "Chọn rồi ghi đè (Chromium)"];
+                                    model: ["Xoá lùi từng ký tự", "Bôi chọn rồi ghi đè"];
                                     current-index <=> root.rewrite-mode;
                                 }
                             }
                         }
                         Hint {
-                            text: "«Chọn rồi ghi đè» tự động áp dụng cho trình duyệt Chromium/Chrome/Edge — cùng workaround như bản macOS/Windows.";
+                            text: "«Bôi chọn rồi ghi đè» tự được dùng cho trình duyệt Chromium (Chrome, Edge…) — giống bản macOS và Windows.";
                         }
                         Rectangle { vertical-stretch: 1; }
                     }
@@ -400,7 +402,7 @@ export component AppWindow inherits Window {
                                     spacing: 6px;
                                     Text { text: "UVie for Linux"; color: Theme.text; font-size: 20px; font-weight: 700; }
                                     Hint {
-                                        text: "Bộ gõ tiếng Việt Telex/VNI cho X11 và mọi Wayland compositor (kể cả GNOME) qua evdev + uinput.";
+                                        text: "Bộ gõ tiếng Việt Telex/VNI cho Linux — gõ mượt trên mọi môi trường đồ hoạ, kể cả Wayland.";
                                     }
                                     HorizontalBox {
                                         padding-top: 4px;

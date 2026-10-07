@@ -25,7 +25,17 @@ Unicode injection: uinput chỉ phát được key *codes*, nên ký tự có d�
 qua ASCII fast-path → `Ctrl+Shift+U` hex → clipboard-paste (phục hồi
 clipboard sau 400ms). Tuỳ chọn trong Cài đặt → Nâng cao.
 
-## Build
+## Cài đặt
+
+```bash
+# gói build sẵn (release page)
+tar -xzf uvie-for-linux-x86_64.tar.gz
+cd uvie-for-linux-x86_64
+./install.sh            # everything
+./install.sh --daemon   # chỉ daemon + UI
+```
+
+## Build từ source
 
 ```bash
 # deps (Ubuntu/Debian)
@@ -67,5 +77,6 @@ crates/uvie-ffi    libuvie_ffi.{so,a} — re-export uvie::ffi for C/C++
 include/uvie.h     C header for the two framework engines
 ibus/              IBus engine + component XML
 fcitx5/            Fcitx5 addon + .conf files
-packaging/         udev rule, systemd user unit, .desktop, install.sh
+packaging/         udev rule, systemd user unit, .desktop, install.sh,
+                   install-prebuilt.sh (release tarball)
 ```

@@ -46,6 +46,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let macros = Rc::new(RefCell::new(MacroTable::load(&macros_path)));
 
     let app = AppWindow::new()?;
+    app.set_version(env!("CARGO_PKG_VERSION").into());
 
     // ---- push current state into the UI ----
     {

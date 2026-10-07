@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake pkg-config gettext \
+            libibus-1.0-dev libxkbcommon-dev libxcb1-dev \
+            libfontconfig1-dev libudev-dev \
+            fcitx5-modules-dev libfcitx5core-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --workspace
+      - name: Build ibus-uvie
+        run: |
+          cmake -S ibus -B build-ibus -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-ibus
+      - name: Build fcitx5-uvie
+        run: |
+          cmake -S fcitx5 -B build-fcitx5 -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-fcitx5
+      - name: Stage package
+        run: |
+          pkg=uvie-for-linux-x86_64
+          mkdir -p "$pkg/bin" "$pkg/lib/ibus" "$pkg/share/ibus/component" \
+                   "$pkg/lib/fcitx5" "$pkg/etc/fcitx5/addon" "$pkg/etc/fcitx5/conf.d" \
+                   "$pkg/share/icons/hicolor/256x256/apps" \
+                   "$pkg/share/applications" "$pkg/lib/systemd/user" "$pkg/lib/udev/rules.d"
+          cp target/release/uvie-inputd "$pkg/bin/"
+          cp target/release/uvie-ui "$pkg/bin/"
+          cp target/release/libuvie_ffi.so "$pkg/lib/"
+          cp build-ibus/ibus-engine-uvie "$pkg/lib/ibus/"
+          cp build-ibus/uvie.xml "$pkg/share/ibus/component/"
+          cp build-fcitx5/libuvie.so "$pkg/lib/fcitx5/"
+          cp build-fcitx5/src/uvie-addon.conf "$pkg/etc/fcitx5/addon/"
+          cp build-fcitx5/src/uvie.conf "$pkg/etc/fcitx5/conf.d/"
+          cp assets/logo.png "$pkg/share/icons/hicolor/256x256/apps/uvie.png"
+          cp packaging/uvie-ui.desktop "$pkg/share/applications/"
+          cp packaging/uvie-inputd.service "$pkg/lib/systemd/user/"
+          cp packaging/99-uvie.rules "$pkg/lib/udev/rules.d/"
+          cp packaging/install-prebuilt.sh "$pkg/install.sh"
+          chmod +x "$pkg/install.sh"
+          cp README.md "$pkg/"
+          tar -czf "$pkg.tar.gz" "$pkg"
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: UVie for Linux ${{ github.ref_name }}
+          files: uvie-for-linux-x86_64.tar.gz
+          generate_release_notes: true
