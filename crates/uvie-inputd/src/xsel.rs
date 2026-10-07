@@ -104,6 +104,13 @@ impl XSel {
         }
     }
 
+    /// Forget that a fetch was served — used between the pre-Ctrl+V
+    /// drain (clipboard-manager requests) and the post-Ctrl+V wait so
+    /// only the app's own fetch counts.
+    pub fn reset_fetched(&mut self) {
+        self.fetched = false;
+    }
+
     /// Drain whatever requests are queued right now (housekeeping — lets
     /// a later manual paste of our text keep working).
     pub fn pump(&mut self) {
