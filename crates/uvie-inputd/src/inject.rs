@@ -39,8 +39,12 @@ const EV_KEY: u16 = 0x01;
 const CLIPBOARD_RESTORE_DELAY: Duration = Duration::from_millis(400);
 /// Quiet time before a pending paste burst is flushed as one selection.
 const PASTE_FLUSH_DELAY: Duration = Duration::from_millis(150);
-/// Extra margin after emitting Ctrl+V before we may set_text again.
+/// Extra margin after emitting Ctrl+V before we may set_text again
+/// (arboard/Wayland path only — on X11 we wait for the fetch itself).
 const PASTE_SETTLE: Duration = Duration::from_millis(60);
+/// How long `paste_owned` waits for the app to fetch the selection after
+/// Ctrl+V before giving up (keeps input flowing on a stuck/slow app).
+const PASTE_FETCH_WAIT: Duration = Duration::from_millis(250);
 
 /// Clipboard state shared with the delayed-restore thread. The user's
 /// clipboard contents are captured ONCE per burst; `gen` serializes
@@ -63,6 +67,10 @@ pub struct Injector {
     /// backspaces actually land (omnibox drops/reorders them otherwise).
     chromium_app: bool,
     clipboard: Option<arboard::Clipboard>,
+    /// Owned CLIPBOARD selection (X11) — unlike arboard we see the app's
+    /// SelectionRequest fetches, so we can wait for the fetch before
+    /// allowing the next set_text. `None` on Wayland / no DISPLAY.
+    xsel: Option<crate::xsel::XSel>,
     /// Accumulated non-ASCII text awaiting its single-burst paste.
     pending_paste: String,
     paste_deadline: Option<Instant>,
@@ -80,6 +88,7 @@ impl Injector {
             rewrite,
             chromium_app: false,
             clipboard: arboard::Clipboard::new().ok(),
+            xsel: crate::xsel::XSel::connect(),
             pending_paste: String::new(),
             paste_deadline: None,
             paste_state: Arc::new(Mutex::new(PasteState::default())),
@@ -107,6 +116,14 @@ impl Injector {
             if Instant::now() >= d {
                 self.flush_pending();
             }
+        }
+    }
+
+    /// Serve any late selection requests (a user pasting our injected
+    /// text manually, clipboard managers). Cheap; call each tick.
+    pub fn pump_selection(&mut self) {
+        if let Some(xsel) = self.xsel.as_mut() {
+            xsel.pump();
         }
     }
 
@@ -294,28 +311,32 @@ impl Injector {
         if text.is_empty() {
             return;
         }
+        let current_clip = self
+            .clipboard
+            .as_mut()
+            .and_then(|clip| clip.get_text().ok());
+        let gen = {
+            let mut st = self.paste_state.lock().unwrap();
+            if st.saved.is_none() {
+                st.saved = current_clip;
+            }
+            st.gen += 1;
+            st.gen
+        };
+        if self.paste_owned(&text) {
+            self.schedule_restore(gen);
+            return;
+        }
         let Some(clip) = self.clipboard.as_mut() else {
             // No clipboard available (headless) — fall back to hex input.
+            self.clear_saved(gen);
             for c in text.chars() {
                 self.unicode_seq(c);
             }
             return;
         };
-        let gen = {
-            let mut st = self.paste_state.lock().unwrap();
-            if st.saved.is_none() {
-                st.saved = clip.get_text().ok();
-            }
-            st.gen += 1;
-            st.gen
-        };
         if clip.set_text(&text).is_err() {
-            {
-                let mut st = self.paste_state.lock().unwrap();
-                if st.gen == gen {
-                    st.saved = None;
-                }
-            }
+            self.clear_saved(gen);
             for c in text.chars() {
                 self.unicode_seq(c);
             }
@@ -324,6 +345,45 @@ impl Injector {
         self.key(KEY_LEFTCTRL, true);
         self.tap(47); // KEY_V
         self.key(KEY_LEFTCTRL, false);
+        self.schedule_restore(gen);
+        // Give the app a window to actually read the selection before the
+        // next flush's set_text could overwrite it (arboard path only —
+        // the owned-selection path already waited for the fetch).
+        std::thread::sleep(PASTE_SETTLE);
+    }
+
+    /// Paste through our own X selection and wait until a fetch has been
+    /// served after Ctrl+V — ordering-safe on X11. Clipboard managers
+    /// (Klipper) fetch right on ownership change, so we drain those
+    /// requests BEFORE emitting Ctrl+V; a conversion arriving after V is
+    /// the app's paste. Returns false if no owned selection is available
+    /// (Wayland) or ownership failed.
+    fn paste_owned(&mut self, text: &str) -> bool {
+        let Some(mut xsel) = self.xsel.take() else {
+            return false;
+        };
+        xsel.set_text(text);
+        xsel.wait_fetched(Duration::from_millis(40));
+        self.key(KEY_LEFTCTRL, true);
+        self.tap(47); // KEY_V
+        self.key(KEY_LEFTCTRL, false);
+        // Wait for the app's fetch; bounded — a very slow app degrades to
+        // the old timing rather than freezing input.
+        xsel.wait_fetched(PASTE_FETCH_WAIT);
+        self.xsel = Some(xsel);
+        true
+    }
+
+    /// Drop the captured user clipboard when a flush never touched it
+    /// (fallback paths), keeping the state consistent for the next burst.
+    fn clear_saved(&mut self, gen: u64) {
+        let mut st = self.paste_state.lock().unwrap();
+        if st.gen == gen {
+            st.saved = None;
+        }
+    }
+
+    fn schedule_restore(&mut self, gen: u64) {
         let state = Arc::clone(&self.paste_state);
         std::thread::spawn(move || {
             std::thread::sleep(CLIPBOARD_RESTORE_DELAY);
@@ -340,8 +400,5 @@ impl Injector {
                 }
             }
         });
-        // Give the app a window to actually read the selection before the
-        // next flush's set_text could overwrite it.
-        std::thread::sleep(PASTE_SETTLE);
     }
 }

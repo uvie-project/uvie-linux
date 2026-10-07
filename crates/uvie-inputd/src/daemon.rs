@@ -132,6 +132,7 @@ impl Daemon {
 
     fn housekeeping(&mut self) {
         self.injector.flush_due();
+        self.injector.pump_selection();
         self.housekeeping_tick += 1;
         if self.housekeeping_tick % HOTPLUG_INTERVAL == 0 {
             self.pool.rescan();
