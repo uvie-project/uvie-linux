@@ -45,6 +45,14 @@ const PASTE_SETTLE: Duration = Duration::from_millis(60);
 /// How long `paste_owned` waits for the app to fetch the selection after
 /// Ctrl+V before giving up (keeps input flowing on a stuck/slow app).
 const PASTE_FETCH_WAIT: Duration = Duration::from_millis(250);
+/// Pause between key taps inside a burst. Multi-key plans (macro
+/// expansion, unicode hex, backspace runs) otherwise emit ~4 evdev
+/// events per tap in well under a millisecond — a 15-char expansion is
+/// ~68 events. A reader that can't drain instantly overflows its
+/// ~64-event client queue and the kernel keeps the NEWEST events, so
+/// the app only sees the tail (observed end-to-end with a slow evdev
+/// forwarder). 1ms per tap keeps every reader fed.
+const TAP_PACING: Duration = Duration::from_millis(1);
 
 /// Clipboard state shared with the delayed-restore thread. The user's
 /// clipboard contents are captured ONCE per burst; `gen` serializes
@@ -172,10 +180,11 @@ impl Injector {
         let _ = self.vdev.emit_key(code, down);
     }
 
-    /// Full press+release of a key code.
+    /// Full press+release of a key code, paced (see TAP_PACING).
     pub fn tap(&mut self, code: u16) {
         self.key(code, true);
         self.key(code, false);
+        std::thread::sleep(TAP_PACING);
     }
 
     /// Focused window is (or stopped being) a Chromium-based app.
