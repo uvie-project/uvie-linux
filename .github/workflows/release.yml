@@ -42,7 +42,7 @@ jobs:
           cp target/release/libuvie_ffi.so "$pkg/lib/"
           cp build-ibus/ibus-engine-uvie "$pkg/lib/ibus/"
           cp build-ibus/uvie.xml "$pkg/share/ibus/component/"
-          cp build-fcitx5/libuvie.so "$pkg/lib/fcitx5/"
+          cp build-fcitx5/src/libuvie.so "$pkg/lib/fcitx5/"
           cp build-fcitx5/src/uvie-addon.conf "$pkg/etc/fcitx5/addon/"
           cp build-fcitx5/src/uvie.conf "$pkg/etc/fcitx5/conf.d/"
           cp assets/logo.png "$pkg/share/icons/hicolor/256x256/apps/uvie.png"
