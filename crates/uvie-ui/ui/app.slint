@@ -17,6 +17,7 @@ component Toggle inherits Switch {
 
 export component AppWindow inherits Window {
     title: "UVie — Cài đặt";
+    icon: @image-url("../../../assets/logo.png");
     min-width: 740px;
     min-height: 500px;
     preferred-width: 740px;
@@ -61,6 +62,22 @@ export component AppWindow inherits Window {
             VerticalLayout {
                 padding: 12px;
                 spacing: 4px;
+                HorizontalBox {
+                    spacing: 10px;
+                    padding-bottom: 10px;
+                    Image {
+                        source: @image-url("../../../assets/logo.png");
+                        width: 36px;
+                        height: 36px;
+                    }
+                    Text {
+                        text: "UVie";
+                        color: white;
+                        font-size: 18px;
+                        font-weight: 700;
+                        vertical-alignment: center;
+                    }
+                }
                 for name[i] in root.sections: Rectangle {
                     height: 36px;
                     border-radius: 6px;
@@ -258,7 +275,15 @@ export component AppWindow inherits Window {
                     if root.page == 5: VerticalBox {
                         padding: 4px;
                         spacing: 14px;
-                        Text { text: "UVie for Linux"; font-size: 22px; font-weight: 700; color: white; }
+                        HorizontalBox {
+                            spacing: 14px;
+                            Image {
+                                source: @image-url("../../../assets/logo.png");
+                                width: 64px;
+                                height: 64px;
+                            }
+                            Text { text: "UVie for Linux"; font-size: 22px; font-weight: 700; color: white; vertical-alignment: center; }
+                        }
                         Text {
                             text: "Bộ gõ tiếng Việt Telex/VNI cho X11 và mọi Wayland compositor (kể cả GNOME) qua evdev + uinput.";
                             color: #bbb; wrap: word-wrap;
