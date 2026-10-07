@@ -75,6 +75,11 @@ pub struct Injector {
     pending_paste: String,
     paste_deadline: Option<Instant>,
     paste_state: Arc<Mutex<PasteState>>,
+    /// We have owned CLIPBOARD at least once — after that, arboard's
+    /// synchronous `get_text` must never run again: it would send the
+    /// request to our own xsel window, servable only by this (blocked)
+    /// thread — a multi-second deadlock per flush.
+    took_selection: bool,
 }
 
 impl Injector {
@@ -92,6 +97,7 @@ impl Injector {
             pending_paste: String::new(),
             paste_deadline: None,
             paste_state: Arc::new(Mutex::new(PasteState::default())),
+            took_selection: false,
         })
     }
 
@@ -311,14 +317,15 @@ impl Injector {
         if text.is_empty() {
             return;
         }
-        let current_clip = self
-            .clipboard
-            .as_mut()
-            .and_then(|clip| clip.get_text().ok());
         let gen = {
             let mut st = self.paste_state.lock().unwrap();
-            if st.saved.is_none() {
-                st.saved = current_clip;
+            if st.saved.is_none() && !self.took_selection {
+                // Only fetch while we do NOT own CLIPBOARD — once we do,
+                // arboard's get_text would dead-lock against ourselves.
+                st.saved = self
+                    .clipboard
+                    .as_mut()
+                    .and_then(|clip| clip.get_text().ok());
             }
             st.gen += 1;
             st.gen
@@ -363,7 +370,11 @@ impl Injector {
             return false;
         };
         xsel.set_text(text);
+        self.took_selection = true;
         xsel.wait_fetched(Duration::from_millis(40));
+        // The drain above may have served a clipboard-manager fetch —
+        // reset so the post-V wait only completes on the app's own fetch.
+        xsel.reset_fetched();
         self.key(KEY_LEFTCTRL, true);
         self.tap(47); // KEY_V
         self.key(KEY_LEFTCTRL, false);

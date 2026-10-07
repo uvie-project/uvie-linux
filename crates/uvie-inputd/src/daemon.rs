@@ -123,6 +123,10 @@ impl Daemon {
                 }
                 Err(_) => self.housekeeping(),
             }
+            // Serve queued CLIPBOARD requests on every iteration — a
+            // non-blocking poll. Running it only inside housekeeping
+            // starves the queue whenever input keeps recv_timeout fed.
+            self.injector.pump_selection();
         }
     }
 
