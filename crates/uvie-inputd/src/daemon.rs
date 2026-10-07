@@ -103,7 +103,14 @@ impl Daemon {
         }
 
         loop {
-            match rx.recv_timeout(HOUSEKEEPING_INTERVAL) {
+            // Poll sooner while a clipboard-paste burst is pending so its
+            // ~150ms quiet-time flush lands on schedule.
+            let interval = if self.injector.has_pending() {
+                Duration::from_millis(50)
+            } else {
+                HOUSEKEEPING_INTERVAL
+            };
+            match rx.recv_timeout(interval) {
                 Ok(Msg::Dev(DevMsg::Event(ev))) => self.on_event(ev.dev, &ev.event),
                 Ok(Msg::Dev(DevMsg::Gone(id))) => {
                     self.pool.remove(id);
@@ -124,6 +131,7 @@ impl Daemon {
     // ------------------------------------------------------------------
 
     fn housekeeping(&mut self) {
+        self.injector.flush_due();
         self.housekeeping_tick += 1;
         if self.housekeeping_tick % HOTPLUG_INTERVAL == 0 {
             self.pool.rescan();

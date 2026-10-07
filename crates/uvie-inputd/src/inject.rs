@@ -7,13 +7,17 @@
 //!   * ASCII fast path — look up the char in the keymap's reverse map
 //!     (level-0 or Shift level-1) and emit the real key code.
 //!   * `unicode_hex` — Ctrl+Shift+U hex sequence (GTK/IBus-aware fields).
-//!   * `clipboard` — write the string to the clipboard, emit Ctrl+V, then
-//!     restore the previous clipboard contents (espanso-style fallback).
+//!   * `clipboard` — accumulate the string, then write it to the clipboard
+//!     once per burst and emit Ctrl+V (espanso-style fallback). Per-
+//!     keystroke pastes race: the app fetches the selection asynchronously
+//!     and a fetch can land after the *next* set_text, serving the wrong
+//!     string (observed as "đơợc" at ~30-50ms/keystroke). Batching makes
+//!     the whole burst a single selection hand-off.
 
 use std::collections::HashMap;
 use std::io;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use evdev::InputEvent;
 
@@ -28,21 +32,25 @@ use crate::keys_linux::*;
 /// grab) our own device when scanning /dev/input.
 pub const VIRTUAL_DEVICE_NAME: &str = "uvie virtual keyboard";
 
+const EV_KEY: u16 = 0x01;
+
+/// Restore the user's clipboard this long after the last flush — the app
+/// must have fetched the selection by then (espanso's trick).
 const CLIPBOARD_RESTORE_DELAY: Duration = Duration::from_millis(400);
-/// Minimum spacing between clipboard pastes — the target app reads the
-/// selection asynchronously, so back-to-back set_text+Ctrl+V can serve a
-/// stale or next-in-line string (observed as "đơợc" at ~30ms/keystroke).
+/// Quiet time before a pending paste burst is flushed as one selection.
+const PASTE_FLUSH_DELAY: Duration = Duration::from_millis(150);
+/// Extra margin after emitting Ctrl+V before we may set_text again.
 const PASTE_SETTLE: Duration = Duration::from_millis(60);
 
-/// Clipboard state shared with the delayed-restore thread. The original
-/// user clipboard is captured ONCE at the start of a paste burst; restores
-/// are serialized by `gen` so only the last paste of a burst restores.
+/// Clipboard state shared with the delayed-restore thread. The user's
+/// clipboard contents are captured ONCE per burst; `gen` serializes
+/// restores so only the last flush of a burst restores.
 #[derive(Default)]
 struct PasteState {
-    /// Clipboard contents before the current burst (`None` = not in burst).
+    /// Clipboard contents before our first set_text (`None` = restored).
     saved: Option<String>,
-    /// Bump on every paste; a restore fires only if gen is unchanged after
-    /// the delay.
+    /// Bumped on every flush; a restore fires only if gen is unchanged
+    /// after the delay.
     gen: u64,
 }
 
@@ -55,6 +63,9 @@ pub struct Injector {
     /// backspaces actually land (omnibox drops/reorders them otherwise).
     chromium_app: bool,
     clipboard: Option<arboard::Clipboard>,
+    /// Accumulated non-ASCII text awaiting its single-burst paste.
+    pending_paste: String,
+    paste_deadline: Option<Instant>,
     paste_state: Arc<Mutex<PasteState>>,
 }
 
@@ -69,24 +80,50 @@ impl Injector {
             rewrite,
             chromium_app: false,
             clipboard: arboard::Clipboard::new().ok(),
+            pending_paste: String::new(),
+            paste_deadline: None,
             paste_state: Arc::new(Mutex::new(PasteState::default())),
         })
     }
 
     /// Rebuild after settings/layout changes.
     pub fn configure(&mut self, keymap: &Keymap, mode: InjectionMode, rewrite: RewriteMode) {
+        self.flush_pending();
         self.char_map = keymap.char_map();
         self.mode = mode;
         self.rewrite = rewrite;
     }
 
+    /// Whether a paste burst is waiting to be flushed (daemon should poll
+    /// sooner so the flush deadline is honored).
+    pub fn has_pending(&self) -> bool {
+        !self.pending_paste.is_empty()
+    }
+
+    /// Flush a pending paste burst if its quiet-time deadline elapsed.
+    /// Called from the daemon's housekeeping tick.
+    pub fn flush_due(&mut self) {
+        if let Some(d) = self.paste_deadline {
+            if Instant::now() >= d {
+                self.flush_pending();
+            }
+        }
+    }
+
     /// Forward one physical event verbatim (pass-through key, SYN, MSC...).
+    /// Only flushes pending pastes before EV_KEY events — the SYN reports
+    /// that terminate every event batch would otherwise flush the burst
+    /// immediately and defeat batching.
     pub fn forward(&mut self, ev: &InputEvent) {
+        if ev.event_type().0 == EV_KEY {
+            self.flush_pending();
+        }
         let _ = self.vdev.emit(ev.event_type().0, ev.code(), ev.value());
     }
 
     /// Forward a raw (type, code, value) triple.
     pub fn emit_raw(&mut self, type_: u16, code: u16, value: i32) {
+        self.flush_pending();
         let _ = self.vdev.emit(type_, code, value);
     }
 
@@ -106,7 +143,8 @@ impl Injector {
         }
     }
 
-    /// Press or release a raw key code on the virtual device.
+    /// Press or release a raw key code on the virtual device. Internal:
+    /// does NOT flush pending pastes (the paste itself emits keys).
     pub fn key(&mut self, code: u16, down: bool) {
         let _ = self.vdev.emit_key(code, down);
     }
@@ -130,8 +168,22 @@ impl Injector {
         }
     }
 
-    /// Erase `n` characters left of the caret.
+    /// Erase `n` characters left of the caret. Backspaces first eat into
+    /// the not-yet-flushed pending paste (they were issued against screen
+    /// text that includes it), then emit real backspaces for the rest.
     pub fn erase(&mut self, n: usize) {
+        let mut n = n;
+        while n > 0 && !self.pending_paste.is_empty() {
+            self.pending_paste.pop();
+            n -= 1;
+        }
+        if self.pending_paste.is_empty() {
+            self.paste_deadline = None;
+        }
+        if n == 0 {
+            return;
+        }
+        self.flush_pending();
         match self.effective_rewrite() {
             RewriteMode::Backspace => {
                 for _ in 0..n {
@@ -142,9 +194,6 @@ impl Injector {
                 // Shift+Left selects the chars; the following typed text
                 // overwrites the selection — workaround for fields that
                 // drop synthetic backspaces (Chromium omnibox).
-                if n == 0 {
-                    return;
-                }
                 self.key(KEY_LEFTSHIFT, true);
                 for _ in 0..n {
                     self.tap(KEY_LEFT);
@@ -156,6 +205,7 @@ impl Injector {
 
     /// Delete `n` characters right of the caret (mid-word edits).
     pub fn forward_delete(&mut self, n: usize) {
+        self.flush_pending();
         for _ in 0..n {
             self.tap(KEY_DELETE);
         }
@@ -164,9 +214,10 @@ impl Injector {
     /// Type a whole string (one diff suffix).
     pub fn type_str(&mut self, text: &str) {
         if matches!(self.effective_mode(), InjectionMode::Clipboard) && !text.is_ascii() {
-            self.paste_str(text);
+            self.queue_paste(text);
             return;
         }
+        self.flush_pending();
         for c in text.chars() {
             self.type_char(c);
         }
@@ -222,18 +273,27 @@ impl Injector {
 
     fn unicode_char(&mut self, c: char) {
         match self.effective_mode() {
-            InjectionMode::Clipboard => self.paste_str(&c.to_string()),
+            InjectionMode::Clipboard => self.queue_paste(&c.to_string()),
             _ => self.unicode_seq(c),
         }
     }
 
-    /// Paste `text` via the clipboard, then restore previous contents.
-    ///
-    /// A multi-keystroke burst stays in "paste mode": the user's original
-    /// clipboard is captured once, and the restore is scheduled only after
-    /// the last paste in the burst — otherwise a restore firing mid-burst
-    /// serves the stale text to the next Ctrl+V.
-    fn paste_str(&mut self, text: &str) {
+    /// Accumulate text into the pending paste burst; the burst is flushed
+    /// as ONE set_text+Ctrl+V after `PASTE_FLUSH_DELAY` of quiet or before
+    /// the next non-paste output.
+    fn queue_paste(&mut self, text: &str) {
+        self.pending_paste.push_str(text);
+        self.paste_deadline = Some(Instant::now() + PASTE_FLUSH_DELAY);
+    }
+
+    /// Paste the accumulated burst via the clipboard, then schedule the
+    /// delayed restore of the user's previous clipboard contents.
+    fn flush_pending(&mut self) {
+        let text = std::mem::take(&mut self.pending_paste);
+        self.paste_deadline = None;
+        if text.is_empty() {
+            return;
+        }
         let Some(clip) = self.clipboard.as_mut() else {
             // No clipboard available (headless) — fall back to hex input.
             for c in text.chars() {
@@ -249,7 +309,7 @@ impl Injector {
             st.gen += 1;
             st.gen
         };
-        if clip.set_text(text.to_string()).is_err() {
+        if clip.set_text(&text).is_err() {
             {
                 let mut st = self.paste_state.lock().unwrap();
                 if st.gen == gen {
@@ -270,7 +330,7 @@ impl Injector {
             let prev = {
                 let mut st = state.lock().unwrap();
                 if st.gen != gen {
-                    return; // a newer paste superseded us
+                    return; // a newer flush owns the pending restore
                 }
                 st.saved.take()
             };
@@ -280,8 +340,8 @@ impl Injector {
                 }
             }
         });
-        // Give the app a window to actually read the selection before we
-        // risk overwriting it with the next keystroke's set_text.
+        // Give the app a window to actually read the selection before the
+        // next flush's set_text could overwrite it.
         std::thread::sleep(PASTE_SETTLE);
     }
 }
