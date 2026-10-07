@@ -12,6 +12,7 @@
 
 use std::collections::HashMap;
 use std::io;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use evdev::InputEvent;
@@ -28,6 +29,22 @@ use crate::keys_linux::*;
 pub const VIRTUAL_DEVICE_NAME: &str = "uvie virtual keyboard";
 
 const CLIPBOARD_RESTORE_DELAY: Duration = Duration::from_millis(400);
+/// Minimum spacing between clipboard pastes — the target app reads the
+/// selection asynchronously, so back-to-back set_text+Ctrl+V can serve a
+/// stale or next-in-line string (observed as "đơợc" at ~30ms/keystroke).
+const PASTE_SETTLE: Duration = Duration::from_millis(60);
+
+/// Clipboard state shared with the delayed-restore thread. The original
+/// user clipboard is captured ONCE at the start of a paste burst; restores
+/// are serialized by `gen` so only the last paste of a burst restores.
+#[derive(Default)]
+struct PasteState {
+    /// Clipboard contents before the current burst (`None` = not in burst).
+    saved: Option<String>,
+    /// Bump on every paste; a restore fires only if gen is unchanged after
+    /// the delay.
+    gen: u64,
+}
 
 pub struct Injector {
     vdev: Vdev,
@@ -38,6 +55,7 @@ pub struct Injector {
     /// backspaces actually land (omnibox drops/reorders them otherwise).
     chromium_app: bool,
     clipboard: Option<arboard::Clipboard>,
+    paste_state: Arc<Mutex<PasteState>>,
 }
 
 impl Injector {
@@ -51,6 +69,7 @@ impl Injector {
             rewrite,
             chromium_app: false,
             clipboard: arboard::Clipboard::new().ok(),
+            paste_state: Arc::new(Mutex::new(PasteState::default())),
         })
     }
 
@@ -144,12 +163,31 @@ impl Injector {
 
     /// Type a whole string (one diff suffix).
     pub fn type_str(&mut self, text: &str) {
-        if matches!(self.mode, InjectionMode::Clipboard) && !text.is_ascii() {
+        if matches!(self.effective_mode(), InjectionMode::Clipboard) && !text.is_ascii() {
             self.paste_str(text);
             return;
         }
         for c in text.chars() {
             self.type_char(c);
+        }
+    }
+
+    /// Resolve `Auto` to a concrete strategy: Ctrl+Shift+U hex only works
+    /// in IBus-aware text fields; everywhere else it types literal garbage
+    /// ("chaof" -> "che0<LF>o"), so fall back to clipboard pasting.
+    fn effective_mode(&self) -> InjectionMode {
+        if self.mode != InjectionMode::Auto {
+            return self.mode;
+        }
+        let ibus = std::env::var_os("IBUS_ADDRESS").is_some()
+            || ["GTK_IM_MODULE", "QT_IM_MODULE", "XMODIFIERS"]
+                .iter()
+                .filter_map(|k| std::env::var(k).ok())
+                .any(|v| v.contains("ibus"));
+        if ibus {
+            InjectionMode::UnicodeHex
+        } else {
+            InjectionMode::Clipboard
         }
     }
 
@@ -183,13 +221,18 @@ impl Injector {
     }
 
     fn unicode_char(&mut self, c: char) {
-        match self.mode {
+        match self.effective_mode() {
             InjectionMode::Clipboard => self.paste_str(&c.to_string()),
-            InjectionMode::UnicodeHex | InjectionMode::Auto => self.unicode_seq(c),
+            _ => self.unicode_seq(c),
         }
     }
 
     /// Paste `text` via the clipboard, then restore previous contents.
+    ///
+    /// A multi-keystroke burst stays in "paste mode": the user's original
+    /// clipboard is captured once, and the restore is scheduled only after
+    /// the last paste in the burst — otherwise a restore firing mid-burst
+    /// serves the stale text to the next Ctrl+V.
     fn paste_str(&mut self, text: &str) {
         let Some(clip) = self.clipboard.as_mut() else {
             // No clipboard available (headless) — fall back to hex input.
@@ -198,9 +241,21 @@ impl Injector {
             }
             return;
         };
-        let previous = clip.get_text().ok();
-        let set_ok = clip.set_text(text.to_string()).is_ok();
-        if !set_ok {
+        let gen = {
+            let mut st = self.paste_state.lock().unwrap();
+            if st.saved.is_none() {
+                st.saved = clip.get_text().ok();
+            }
+            st.gen += 1;
+            st.gen
+        };
+        if clip.set_text(text.to_string()).is_err() {
+            {
+                let mut st = self.paste_state.lock().unwrap();
+                if st.gen == gen {
+                    st.saved = None;
+                }
+            }
             for c in text.chars() {
                 self.unicode_seq(c);
             }
@@ -209,15 +264,24 @@ impl Injector {
         self.key(KEY_LEFTCTRL, true);
         self.tap(47); // KEY_V
         self.key(KEY_LEFTCTRL, false);
-        // The target app reads the clipboard asynchronously — restore on a
-        // delay or the paste sees the restored text (espanso's trick).
-        if let Some(prev) = previous {
-            std::thread::spawn(move || {
-                std::thread::sleep(CLIPBOARD_RESTORE_DELAY);
+        let state = Arc::clone(&self.paste_state);
+        std::thread::spawn(move || {
+            std::thread::sleep(CLIPBOARD_RESTORE_DELAY);
+            let prev = {
+                let mut st = state.lock().unwrap();
+                if st.gen != gen {
+                    return; // a newer paste superseded us
+                }
+                st.saved.take()
+            };
+            if let Some(prev) = prev {
                 if let Ok(mut clip) = arboard::Clipboard::new() {
                     let _ = clip.set_text(prev);
                 }
-            });
-        }
+            }
+        });
+        // Give the app a window to actually read the selection before we
+        // risk overwriting it with the next keystroke's set_text.
+        std::thread::sleep(PASTE_SETTLE);
     }
 }

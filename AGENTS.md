@@ -59,6 +59,15 @@ libudev-dev libibus-1.0-dev fcitx5-modules-dev libfcitx5core-dev gettext`.
   headers ship no autoptr for IBusEngine.
 - In fcitx5 `UvieEngine` (C++ class) collides with `UvieEngine` (C opaque
   from uvie.h) — use `::UvieEngine` for the FFI handle.
+- Clipboard pastes are burst-serialized (`PasteState` in inject.rs): the
+  user's clipboard is captured once per burst, only the LAST paste
+  schedules the 400ms restore (generation counter), and a 60ms settle
+  separates consecutive pastes — otherwise the app reads a stale or
+  next-in-line selection and produces e.g. "đơợc" at ~30ms/keystroke.
+- `InjectionMode::Auto` = hex when an IBus env marker exists
+  (`IBUS_ADDRESS`, `GTK_IM_MODULE`/`QT_IM_MODULE`/`XMODIFIERS` *= ibus),
+  else clipboard — bare Qt/KDE fields without IBus turn Ctrl+Shift+U
+  sequences into literal garbage.
 - Grab = exclusive. uvie-inputd sees real keyboards only because other
   readers keep their fds; injected keys come from our own device
   (`VIRTUAL_DEVICE_NAME`) which is skipped during rescan.
