@@ -158,19 +158,31 @@ impl Injector {
         let _ = self.vdev.emit(type_, code, value);
     }
 
-    /// Emit one action from a dispatch plan.
+    /// Emit one action from a dispatch plan. A bare `Backspace` action is
+    /// treated as a pure deletion (the selection is removed with Delete).
     pub fn act(&mut self, action: &uvie_core::InputAction) {
+        self.act_with(action, false);
+    }
+
+    fn act_with(&mut self, action: &uvie_core::InputAction, overwrites: bool) {
         match action {
-            uvie_core::InputAction::Backspace(n) => self.erase(*n),
+            uvie_core::InputAction::Backspace(n) => self.erase(*n, overwrites),
             uvie_core::InputAction::ForwardDelete(n) => self.forward_delete(*n),
             uvie_core::InputAction::Text(text) => self.type_str(text),
         }
     }
 
-    /// Emit every action in a plan, in order.
+    /// Emit every action in a plan, in order. In `SelectOverwrite` mode a
+    /// `Backspace` followed by non-empty `Text` selects and lets the text
+    /// overwrite the selection; a trailing `Backspace` (nothing follows)
+    /// selects and then deletes, or the characters would stay selected and
+    /// survive.
     pub fn apply_plan(&mut self, plan: &[uvie_core::InputAction]) {
-        for action in plan {
-            self.act(action);
+        for (i, action) in plan.iter().enumerate() {
+            let overwrites = plan[i + 1..]
+                .iter()
+                .any(|a| matches!(a, uvie_core::InputAction::Text(s) if !s.is_empty()));
+            self.act_with(action, overwrites);
         }
     }
 
@@ -203,7 +215,10 @@ impl Injector {
     /// Erase `n` characters left of the caret. Backspaces first eat into
     /// the not-yet-flushed pending paste (they were issued against screen
     /// text that includes it), then emit real backspaces for the rest.
-    pub fn erase(&mut self, n: usize) {
+    /// `overwrites` says a non-empty `Text` action follows, so a
+    /// selection-based erase can leave the selection for that text to
+    /// replace; without it the selection is deleted explicitly.
+    pub fn erase(&mut self, n: usize, overwrites: bool) {
         let mut n = n;
         while n > 0 && !self.pending_paste.is_empty() {
             self.pending_paste.pop();
@@ -231,6 +246,9 @@ impl Injector {
                     self.tap(KEY_LEFT);
                 }
                 self.key(KEY_LEFTSHIFT, false);
+                if !overwrites {
+                    self.tap(KEY_DELETE);
+                }
             }
         }
     }

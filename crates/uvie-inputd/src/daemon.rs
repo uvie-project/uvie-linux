@@ -237,7 +237,10 @@ impl Daemon {
             ctrl: self.ctrl(),
             alt: self.alt(),
             shift: self.shift(),
-            win: false,
+            win: self
+                .pressed_mods
+                .iter()
+                .any(|c| keys_linux::META_KEYS.contains(c)),
             injected: false,
         };
         let ctx = Context {

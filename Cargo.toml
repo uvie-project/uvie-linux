@@ -14,8 +14,8 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/uvie-project/uvie-linux"
 
 [workspace.dependencies]
-uvie = { git = "https://github.com/uvie-project/uvie-rs", tag = "uvie-host-v0.2.0" }
-uvie-host = { git = "https://github.com/uvie-project/uvie-rs", tag = "uvie-host-v0.2.0" }
+uvie = { git = "https://github.com/uvie-project/uvie-rs", tag = "uvie-host-v0.2.1" }
+uvie-host = { git = "https://github.com/uvie-project/uvie-rs", tag = "uvie-host-v0.2.1" }
 uvie-core = { path = "crates/uvie-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
