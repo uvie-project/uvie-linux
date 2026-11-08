@@ -236,6 +236,7 @@ impl Daemon {
             kind,
             ctrl: self.ctrl(),
             alt: self.alt(),
+            win: false,
             injected: false,
         };
         let ctx = Context {
