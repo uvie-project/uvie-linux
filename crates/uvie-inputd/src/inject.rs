@@ -158,12 +158,6 @@ impl Injector {
         let _ = self.vdev.emit(type_, code, value);
     }
 
-    /// Emit one action from a dispatch plan. A bare `Backspace` action is
-    /// treated as a pure deletion (the selection is removed with Delete).
-    pub fn act(&mut self, action: &uvie_core::InputAction) {
-        self.act_with(action, false);
-    }
-
     fn act_with(&mut self, action: &uvie_core::InputAction, overwrites: bool) {
         match action {
             uvie_core::InputAction::Backspace(n) => self.erase(*n, overwrites),
