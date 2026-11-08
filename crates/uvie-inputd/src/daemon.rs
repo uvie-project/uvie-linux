@@ -236,6 +236,7 @@ impl Daemon {
             kind,
             ctrl: self.ctrl(),
             alt: self.alt(),
+            shift: self.shift(),
             win: false,
             injected: false,
         };
@@ -308,8 +309,9 @@ impl Daemon {
                 }
             }
         }
-        // A focus change invalidates the composing word entirely.
-        self.dispatcher.session.reset();
+        // A focus change drops the in-flight composition and swaps the
+        // per-app sentence-start state, like uvie-mac.
+        self.dispatcher.on_app_switch(app.as_deref().unwrap_or(""));
     }
 
     // ------------------------------------------------------------------

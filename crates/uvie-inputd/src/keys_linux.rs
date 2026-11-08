@@ -39,9 +39,15 @@ pub const META_KEYS: &[u16] = &[KEY_LEFTMETA, KEY_RIGHTMETA];
 pub fn classify(code: u16, ch: Option<char>) -> KeyKind {
     match code {
         KEY_BACKSPACE => return KeyKind::Backspace,
-        KEY_ENTER | KEY_KPENTER | KEY_TAB | KEY_ESC => return KeyKind::Break,
-        KEY_LEFT | KEY_RIGHT | KEY_UP | KEY_DOWN | KEY_HOME | KEY_END | KEY_PAGEUP
-        | KEY_PAGEDOWN | KEY_DELETE | KEY_INSERT => return KeyKind::Navigation,
+        KEY_ENTER | KEY_KPENTER => return KeyKind::Enter,
+        KEY_TAB => return KeyKind::Tab,
+        KEY_ESC => return KeyKind::Escape,
+        KEY_LEFT => return KeyKind::Left,
+        KEY_RIGHT => return KeyKind::Right,
+        KEY_UP | KEY_DOWN | KEY_HOME | KEY_END | KEY_PAGEUP | KEY_PAGEDOWN | KEY_INSERT => {
+            return KeyKind::Navigation
+        }
+        KEY_DELETE => return KeyKind::ForwardDelete,
         _ => {}
     }
     match ch {
