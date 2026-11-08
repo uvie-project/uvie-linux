@@ -1,21 +1,13 @@
-//! uvie-core — platform-independent core of UVie for Linux.
+//! uvie-core — Linux facade over the shared `uvie-host` crate plus the
+//! Linux-specific settings schema and hotkey string round-trips.
 //!
-//! Mirrors uvie-mac's `Core/` + `Features/` layers (and is a direct port of
-//! uvie-win's `uvie-core`): it owns the `uvie` engine session, decides how
-//! each keystroke is dispatched, and holds the user settings / macros /
-//! per-app memory that the input daemon (`uvie-inputd`) and the Slint
-//! settings window (`uvie-ui`) share.
-//!
-//! The crate is intentionally free of Linux/display-server API calls so all
-//! dispatch and typing behavior is unit-testable headlessly — the same split
-//! that lets uvie-mac run `DispatcherTests`/`EngineTypingTests` headlessly.
+//! Dispatch, engine sessions, macros and per-app memory live in `uvie-host`
+//! (same repo/tag as the `uvie` engine). This crate re-exports them under the
+//! historical module paths `uvie-inputd` and `uvie-ui` already use, and owns
+//! `settings` (evdev key codes, injection/rewrite modes) and `hotkey`.
 
-pub mod dispatcher;
-pub mod engine_session;
+pub use uvie_host::{dispatcher, engine_session, keys, macros, memory};
 pub mod hotkey;
-pub mod keys;
-pub mod macros;
-pub mod memory;
 pub mod settings;
 
 pub use dispatcher::{Context, Dispatch, Dispatcher, InputAction, InputLanguage};
@@ -25,7 +17,7 @@ pub use keys::{KeyEvent, KeyKind};
 pub use macros::{MacroEntry, MacroTable};
 pub use memory::LanguageMemory;
 pub use settings::{Hotkey, InjectionMode, LanguagePref, RewriteMode, Settings};
-pub use uvie::InputMethod;
+pub use uvie_host::InputMethod;
 
 #[cfg(test)]
 mod tests;

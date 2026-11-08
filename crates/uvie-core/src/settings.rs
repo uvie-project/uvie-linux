@@ -4,15 +4,12 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use uvie::InputMethod;
+use uvie_host::InputMethod;
 
 /// Vi/En preference remembered per app when `per_app_language` is on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum LanguagePref {
-    Vietnamese,
-    English,
-}
+/// Defined by the shared host crate; re-exported so `uvie_core::settings`
+/// keeps its historical API.
+pub use uvie_host::LanguagePref;
 
 /// Global keyboard shortcut binding (e.g. the Vi/En toggle).
 /// `key` is an evdev key code (e.g. KEY_Z = 44, see input-event-codes.h);
@@ -208,7 +205,7 @@ impl std::fmt::Debug for Settings {
 // InputMethod isn't serde-aware in uvie-rs; serialize as its display name.
 mod input_method_serde {
     use serde::{Deserialize, Deserializer, Serializer};
-    use uvie::InputMethod;
+    use uvie_host::InputMethod;
 
     pub fn serialize<S: Serializer>(m: &InputMethod, s: S) -> Result<S::Ok, S::Error> {
         s.serialize_str(match m {

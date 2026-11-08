@@ -4953,8 +4953,8 @@ dependencies = [
 
 [[package]]
 name = "uvie"
-version = "2.8.1"
-source = "git+https://github.com/uvie-project/uvie-rs?tag=v2.8.1#5891427e314dfc30892a2ba38a8d498c9ccef8e4"
+version = "2.8.3"
+source = "git+https://github.com/uvie-project/uvie-rs?tag=uvie-host-v0.1.0#9aae33efc4094a4f9a276195e3d0ca8759cb75b4"
 dependencies = [
  "cbindgen",
 ]
@@ -4965,13 +4965,23 @@ version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
- "uvie",
+ "uvie-host",
 ]
 
 [[package]]
 name = "uvie-ffi"
 version = "1.0.0"
 dependencies = [
+ "uvie",
+]
+
+[[package]]
+name = "uvie-host"
+version = "0.1.0"
+source = "git+https://github.com/uvie-project/uvie-rs?tag=uvie-host-v0.1.0#9aae33efc4094a4f9a276195e3d0ca8759cb75b4"
+dependencies = [
+ "serde",
+ "serde_json",
  "uvie",
 ]
 

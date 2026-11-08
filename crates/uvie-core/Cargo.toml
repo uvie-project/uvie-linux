@@ -5,9 +5,9 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Host-agnostic core for the UVie Linux IME: engine sessions, key dispatch, settings, macros, per-app memory"
+description = "Host-agnostic core for the UVie Linux IME: settings schema and hotkey parsing plus re-exports of the shared uvie-host dispatch layer"
 
 [dependencies]
-uvie.workspace = true
+uvie-host.workspace = true
 serde.workspace = true
 serde_json.workspace = true
