@@ -41,9 +41,24 @@ if [ "$WITH_IM" = 1 ]; then
     fi
 
     if [ -f lib/fcitx5/libuvie.so ]; then
-        sudo install -Dm755 lib/fcitx5/libuvie.so /usr/local/lib/fcitx5/libuvie.so
+        # fcitx5 only searches its compile-time addon dir
+        # (FCITX_INSTALL_ADDONDIR), not /usr/local/lib/fcitx5. Install into
+        # every fcitx5 lib dir found so the addon is visible on Debian
+        # (multiarch), Arch, Fedora, and a source fcitx5 in /usr/local.
+        found=0
+        for d in $(find /usr/lib /usr/lib64 /usr/local/lib -maxdepth 3 \
+                       -type d -name fcitx5 2>/dev/null); do
+            sudo install -Dm755 lib/fcitx5/libuvie.so "$d/libuvie.so"
+            found=1
+        done
+        if [ "$found" = 0 ]; then
+            sudo install -Dm755 lib/fcitx5/libuvie.so \
+                /usr/local/lib/fcitx5/libuvie.so
+        fi
+        # The addon name is the config file stem: install as uvie.conf so
+        # `Addon=uvie` in the input method definition resolves.
         sudo install -Dm644 etc/fcitx5/addon/uvie-addon.conf \
-            /usr/local/share/fcitx5/addon/uvie-addon.conf
+            /usr/local/share/fcitx5/addon/uvie.conf
         sudo install -Dm644 etc/fcitx5/conf.d/uvie.conf \
             /usr/local/share/fcitx5/inputmethod/uvie.conf
     fi

@@ -208,9 +208,16 @@ static gboolean ibus_uvie_engine_process_key_event(IBusEngine *engine,
     }
 
     /* Backspace walks the engine's own history; a real delete only when
-     * there is nothing to walk. */
+     * there is nothing to walk. When the preedit is empty the app deletes
+     * the committed text natively, so drop the engine's view of it too:
+     * keeping a V-C-V committed prefix alive here makes the next keystroke
+     * diff against text the app no longer has. */
     if (keyval == IBUS_KEY_BackSpace) {
         if (uvie->preedit->len == 0) {
+            if (uvie_engine_is_composing(uvie->uvie)) {
+                uvie_engine_reset(uvie->uvie);
+                uvie->flushed = 0;
+            }
             return FALSE;
         }
         gsize bs = uvie_engine_backspace(uvie->uvie, out, sizeof(out));

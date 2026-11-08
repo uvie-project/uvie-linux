@@ -53,6 +53,13 @@ public:
         auto sym = keyEvent.rawKey().sym();
         if (sym == FcitxKey_BackSpace) {
             if (preedit_.empty()) {
+                // The app deletes the committed text natively. Drop the
+                // engine's view of it (V-C-V committed prefix) or the next
+                // keystroke diffs against text the app no longer has.
+                if (uvie_engine_is_composing(uvie_)) {
+                    uvie_engine_reset(uvie_);
+                    flushed_ = 0;
+                }
                 return;
             }
             size_t bs = uvie_engine_backspace(uvie_, out, sizeof(out));

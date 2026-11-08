@@ -16,6 +16,8 @@ set(UVIE_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/../include"
     CACHE PATH "Directory containing uvie.h")
 
 add_executable(ibus-engine-uvie ibus-uvie.c)
+set_target_properties(ibus-engine-uvie PROPERTIES
+    INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}")
 target_include_directories(ibus-engine-uvie PRIVATE
     ${IBUS_INCLUDE_DIRS} ${UVIE_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_directories(ibus-engine-uvie PRIVATE ${UVIE_FFI})

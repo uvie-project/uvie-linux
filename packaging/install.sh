@@ -33,6 +33,12 @@ install -Dm644 packaging/uvie-inputd.service \
 systemctl --user daemon-reload || true
 
 if [ "$WITH_IM" = 1 ]; then
+    echo "==> libuvie_ffi"
+    # The IBus/fcitx5 modules link this shared library at runtime.
+    sudo install -Dm755 target/release/libuvie_ffi.so \
+        /usr/local/lib/libuvie_ffi.so
+    sudo ldconfig || true
+
     echo "==> ibus-uvie"
     cmake -S ibus -B build-ibus -DCMAKE_BUILD_TYPE=Release
     cmake --build build-ibus
