@@ -5,3 +5,4 @@ Cargo.lock.bk
 *.o
 *.so
 *.deb
+.DS_Store
