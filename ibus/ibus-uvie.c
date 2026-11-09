@@ -155,13 +155,13 @@ static int classify_keysym(guint keyval, unsigned int *ch) {
     *ch = 0;
     switch (keyval) {
     case IBUS_KEY_BackSpace:
-    case IBUS_KEY_KP_Delete:
         return UVIE_KIND_BACKSPACE;
     case IBUS_KEY_Return:
     case IBUS_KEY_KP_Enter:
         return UVIE_KIND_ENTER;
     case IBUS_KEY_Tab:
     case IBUS_KEY_KP_Tab:
+    case IBUS_KEY_ISO_Left_Tab:
         return UVIE_KIND_TAB;
     case IBUS_KEY_Escape:
         return UVIE_KIND_ESCAPE;
@@ -172,6 +172,7 @@ static int classify_keysym(guint keyval, unsigned int *ch) {
     case IBUS_KEY_KP_Right:
         return UVIE_KIND_RIGHT;
     case IBUS_KEY_Delete:
+    case IBUS_KEY_KP_Delete:
         return UVIE_KIND_FORWARD_DELETE;
     }
     if ((keyval >= IBUS_KEY_Home && keyval <= IBUS_KEY_Begin) ||
@@ -234,16 +235,17 @@ static unsigned int mods_flags(guint modifiers) {
     return m;
 }
 
-/* The Vi/En toggle chord from settings.json. IBus reports the hardware
- * keycode (evdev+8 on X11); accept both encodings so the chord matches
- * regardless of session type. Exact modifiers only — an extra Super held
- * means the chord belongs to the WM. */
+/* The Vi/En toggle chord from settings.json. IBus reports xkb keycodes
+ * (evdev+8) on both X11 and Wayland, so match that encoding only —
+ * accepting raw evdev too would shadow a sibling physical key's chord
+ * (e.g. hotkey 44=Z would also fire on xkb code 44, physical J).
+ * Exact modifiers only — an extra Super held means the chord belongs
+ * to the WM. */
 static gboolean is_toggle_chord(const UvieSettings *cfg, guint keycode,
                                 guint modifiers) {
     if (cfg->hotkey_key <= 0)
         return FALSE;
-    if (keycode != (guint)cfg->hotkey_key &&
-        keycode != (guint)cfg->hotkey_key + 8)
+    if (keycode != (guint)cfg->hotkey_key + 8)
         return FALSE;
     if (!!(modifiers & IBUS_CONTROL_MASK) != !!cfg->hotkey_ctrl)
         return FALSE;
@@ -265,11 +267,11 @@ static gboolean ibus_uvie_engine_process_key_event(IBusEngine *engine,
         return FALSE;
     }
 
-    /* Master toggle off: finalize any pending text and pass through. */
+    /* Master toggle off: finalize pending text and pass through. The
+     * commit is unconditional — it also resets dispatcher state that the
+     * preedit can't show (raw keys buffered with no output yet). */
     if (!uvie->cfg.enabled) {
-        if (uvie->preedit->len > 0) {
-            ibus_uvie_engine_commit_pending(uvie);
-        }
+        ibus_uvie_engine_commit_pending(uvie);
         return FALSE;
     }
 
@@ -284,9 +286,7 @@ static gboolean ibus_uvie_engine_process_key_event(IBusEngine *engine,
      * let the accelerator reach the app. */
     if (modifiers & (IBUS_CONTROL_MASK | IBUS_MOD1_MASK | IBUS_SUPER_MASK |
                      IBUS_HYPER_MASK | IBUS_META_MASK)) {
-        if (uvie->preedit->len > 0) {
-            ibus_uvie_engine_commit_pending(uvie);
-        }
+        ibus_uvie_engine_commit_pending(uvie);
         return FALSE;
     }
 

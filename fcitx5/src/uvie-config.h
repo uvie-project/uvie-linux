@@ -161,7 +161,7 @@ static void uvie_json_excluded(const char *text, UvieSettings *cfg) {
 }
 
 /* Case-insensitive membership check, mirroring Settings::is_excluded. */
-static int uvie_cfg_app_excluded(const UvieSettings *cfg, const char *app) {
+static inline int uvie_cfg_app_excluded(const UvieSettings *cfg, const char *app) {
     if (!app || !*app)
         return 0;
     for (int i = 0; i < cfg->excluded_count; i++) {

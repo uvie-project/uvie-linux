@@ -39,13 +39,13 @@ int classifySym(FcitxKeySym sym, unsigned int *ch) {
     *ch = 0;
     switch (sym) {
     case FcitxKey_BackSpace:
-    case FcitxKey_KP_Delete:
         return UVIE_KIND_BACKSPACE;
     case FcitxKey_Return:
     case FcitxKey_KP_Enter:
         return UVIE_KIND_ENTER;
     case FcitxKey_Tab:
     case FcitxKey_KP_Tab:
+    case FcitxKey_ISO_Left_Tab:
         return UVIE_KIND_TAB;
     case FcitxKey_Escape:
         return UVIE_KIND_ESCAPE;
@@ -56,6 +56,7 @@ int classifySym(FcitxKeySym sym, unsigned int *ch) {
     case FcitxKey_KP_Right:
         return UVIE_KIND_RIGHT;
     case FcitxKey_Delete:
+    case FcitxKey_KP_Delete:
         return UVIE_KIND_FORWARD_DELETE;
     }
     // Home/End/Begin/Up/Down/Page/Insert (Left/Right, KP_Delete taken
@@ -182,8 +183,10 @@ public:
         // A finished word (dispatcher no longer composing) is final
         // output — commit it to the app, consumed key or not.
         if (!uvie_dispatch_is_composing(uvie_)) {
-            commitString(preedit_);
-            preedit_.clear();
+            if (!preedit_.empty()) {
+                ic_->commitString(preedit_);
+                preedit_.clear();
+            }
             clearPreedit();
         }
         updatePreedit();
@@ -216,7 +219,11 @@ private:
             return false;
         }
         auto raw = keyEvent.rawKey();
-        if (raw.code() != static_cast<unsigned>(cfg.hotkey_key)) {
+        // Key code encoding is frontend-dependent (xkb = evdev+8 on X11,
+        // raw evdev possible elsewhere) — accept both. Trade-off: the
+        // unused encoding can shadow a sibling physical key's chord.
+        if (raw.code() != static_cast<unsigned>(cfg.hotkey_key) &&
+            raw.code() != static_cast<unsigned>(cfg.hotkey_key) + 8) {
             return false;
         }
         auto s = raw.states();
@@ -276,6 +283,9 @@ UvieEngine::UvieEngine(Instance *instance)
     : instance_(instance), factory_([this](InputContext &ic) {
           return new UvieState(this, &ic);
       }) {
+    // A state created before the first activate() must not see a
+    // zero-initialized config (enabled=0 would pass everything through).
+    uvie_config_load(&config_);
     instance_->inputContextManager().registerProperty("uvie-state",
                                                       &factory_);
 }
