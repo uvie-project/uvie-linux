@@ -48,7 +48,23 @@ uvie-host = { git = "https://github.com/uvie-project/uvie-rs", tag = "uvie-host-
 ## Cài đặt
 
 ```bash
-# gói build sẵn (release page)
+# apt repo (Debian/Ubuntu x86_64)
+curl -fsSL https://uvie-project.github.io/uvie-linux/uvie-repo-key.asc \
+  | sudo gpg --dearmor -o /usr/share/keyrings/uvie.gpg
+echo "deb [signed-by=/usr/share/keyrings/uvie.gpg] \
+  https://uvie-project.github.io/uvie-linux stable main" \
+  | sudo tee /etc/apt/sources.list.d/uvie.list
+sudo apt update
+
+# chọn 1 trong 3 đường input (đừng chạy inputd khi đang dùng engine)
+sudo apt install uvie        # daemon + settings UI (đường standalone)
+sudo apt install ibus-uvie   # IBus engine
+sudo apt install fcitx5-uvie # Fcitx5 addon
+```
+
+Hoặc tarball từ release page:
+
+```bash
 tar -xzf uvie-for-linux-x86_64.tar.gz
 cd uvie-for-linux-x86_64
 ./install.sh            # everything

@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -54,7 +55,57 @@ jobs:
           cp README.md "$pkg/"
           tar -czf "$pkg.tar.gz" "$pkg"
       - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           name: UVie for Linux ${{ github.ref_name }}
           files: uvie-for-linux-x86_64.tar.gz
           generate_release_notes: true
+
+  # Build .debs and publish the signed apt repo to the gh-pages branch
+  # (served at https://uvie-project.github.io/uvie-linux).
+  apt-repo:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake pkg-config gettext reprepro \
+            libibus-1.0-dev libxkbcommon-dev libxcb1-dev \
+            libfontconfig1-dev libudev-dev \
+            fcitx5-modules-dev libfcitx5core-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build all
+        run: |
+          cargo build --release --workspace
+          cmake -S ibus -B build-ibus -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-ibus
+          cmake -S fcitx5 -B build-fcitx5 -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-fcitx5
+      - name: Build debs
+        run: packaging/build-debs.sh "${{ github.ref_name }}"
+      - name: Import signing key
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: echo "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
+      - name: Publish apt repo
+        env:
+          APT_GPG_KEYID: ${{ secrets.APT_GPG_KEYID }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages
+          git worktree add apt-repo origin/gh-pages
+          packaging/publish-apt.sh apt-repo "$APT_GPG_KEYID" dist/debs/*.deb
+          cd apt-repo
+          git add -A
+          git commit -m "apt: publish ${{ github.ref_name }}" || true
+          git push origin HEAD:gh-pages
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: UVie for Linux ${{ github.ref_name }}
+          files: dist/debs/*.deb
