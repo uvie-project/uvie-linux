@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UVie for Linux - APT Repository</title>
+<style>
+body { font-family: system-ui, sans-serif; max-width: 720px; margin: 3em auto; padding: 0 1.5em; line-height: 1.6; }
+pre { background: #f4f4f4; padding: 1em; border-radius: 6px; overflow-x: auto; }
+code { font-size: 0.95em; }
+</style>
+</head>
+<body>
+<h1>UVie for Linux - APT Repository</h1>
+<p>Debian/Ubuntu (x86_64) repository for the UVie Vietnamese input method.</p>
+<h2>Setup</h2>
+<pre><code>curl -fsSL https://uvie-project.github.io/uvie-linux/uvie-repo-key.asc \
+  | sudo gpg --dearmor -o /usr/share/keyrings/uvie.gpg
+echo "deb [signed-by=/usr/share/keyrings/uvie.gpg] \
+  https://uvie-project.github.io/uvie-linux stable main" \
+  | sudo tee /etc/apt/sources.list.d/uvie.list
+sudo apt update</code></pre>
+<h2>Packages</h2>
+<p>Pick ONE input path - do not run uvie-inputd while a framework engine is active.</p>
+<ul>
+<li><code>uvie</code> - standalone daemon (uvie-inputd) + settings UI</li>
+<li><code>ibus-uvie</code> - IBus engine</li>
+<li><code>fcitx5-uvie</code> - Fcitx5 addon</li>
+</ul>
+<pre><code>sudo apt install uvie        # daemon + settings UI (standalone)
+sudo apt install ibus-uvie   # IBus
+sudo apt install fcitx5-uvie # Fcitx5</code></pre>
+<p>Source: <a href="https://github.com/uvie-project/uvie-linux">github.com/uvie-project/uvie-linux</a></p>
+</body>
+</html>
