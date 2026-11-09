@@ -42,6 +42,18 @@ pub struct DevicePool {
 /// alphanumeric range plus typical keyboard keys — skips mice, knobs,
 /// power buttons, and remotes that expose a couple of KEY_ codes.
 fn is_keyboard(device: &Device) -> bool {
+    // Absolute-axis devices (touchpads, tablets, remote-KVM "keyboard and
+    // mouse" nodes) cannot be forwarded faithfully — our virtual device
+    // has no absinfo, so grabbing one would freeze the pointer for as
+    // long as the grab is held. Relative axes are fine: they ride through
+    // the virtual device verbatim (see vdev.rs).
+    if device
+        .supported_absolute_axes()
+        .map(|axes| axes.iter().next().is_some())
+        .unwrap_or(false)
+    {
+        return false;
+    }
     let Some(keys) = device.supported_keys() else {
         return false;
     };

@@ -16,9 +16,11 @@ const UI_DEV_DESTROY: u64 = ((UINPUT_IOCTL_BASE as u64) << 8) | 2;
 const UI_DEV_SETUP: u64 = request_code_write(UINPUT_IOCTL_BASE, 3, size_of::<UinputSetup>());
 const UI_SET_EVBIT: u64 = request_code_write(UINPUT_IOCTL_BASE, 100, size_of::<u32>());
 const UI_SET_KEYBIT: u64 = request_code_write(UINPUT_IOCTL_BASE, 101, size_of::<u32>());
+const UI_SET_RELBIT: u64 = request_code_write(UINPUT_IOCTL_BASE, 102, size_of::<u32>());
 
 const EV_SYN: u16 = 0x00;
 const EV_KEY: u16 = 0x01;
+const EV_REL: u16 = 0x02;
 const BUS_VIRTUAL: u16 = 0x06;
 
 /// _IOW(type, nr, size) — Linux ioctl request encoding.
@@ -93,6 +95,14 @@ impl Vdev {
         self.ioctl(UI_SET_EVBIT, EV_KEY as u64)?;
         for code in 0..=767u64 {
             self.ioctl(UI_SET_KEYBIT, code)?;
+        }
+        // Grabbed keyboard+pointer combo devices (2.4GHz receivers, knob
+        // keyboards) forward their relative-motion events through us — the
+        // kernel drops events whose type we never enabled, which would
+        // freeze the pointer for as long as the grab is held.
+        self.ioctl(UI_SET_EVBIT, EV_REL as u64)?;
+        for code in 0..=15u64 {
+            self.ioctl(UI_SET_RELBIT, code)?;
         }
         Ok(())
     }

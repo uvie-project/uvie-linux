@@ -68,9 +68,14 @@ libudev-dev libibus-1.0-dev fcitx5-modules-dev libfcitx5core-dev gettext`.
   (`IBUS_ADDRESS`, `GTK_IM_MODULE`/`QT_IM_MODULE`/`XMODIFIERS` *= ibus),
   else clipboard — bare Qt/KDE fields without IBus turn Ctrl+Shift+U
   sequences into literal garbage.
-- Grab = exclusive. uvie-inputd sees real keyboards only because other
-  readers keep their fds; injected keys come from our own device
-  (`VIRTUAL_DEVICE_NAME`) which is skipped during rescan.
+- Grab = exclusive and per-node. uvie-inputd sees real keyboards only
+  because other readers keep their fds; injected keys come from our own
+  device (`VIRTUAL_DEVICE_NAME`) which is skipped during rescan.
+- A keyboard+pointer combo node (2.4GHz receivers, knob keyboards, IPMI
+  "keyboard and mouse") freezes its pointer half when grabbed — the
+  vdev enables EV_REL so REL deltas ride through verbatim, and
+  `is_keyboard` rejects ABS-capable devices (touchpads/tablets can't be
+  forwarded faithfully without absinfo).
 - Wayland hides focused-window identity — `per_app_language` and
   `excluded_apps`/`chromium_apps` only work on X11 (WM_CLASS via xcb).
 - `gh pr merge` is blocked — humans merge PRs.
