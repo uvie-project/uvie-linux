@@ -102,6 +102,16 @@ int classifySym(FcitxKeySym sym, unsigned int *ch) {
     return UVIE_KIND_OTHER;
 }
 
+// Any "hard" modifier: the chord belongs to the WM/app, not the IME.
+// Mirrors the ibus mask (Ctrl|Alt|Super|Hyper|Meta, plus fcitx5's
+// virtual Super2/Hyper2).
+bool hasHardMod(const KeyStates &states) {
+    return states.testAny(KeyState::Ctrl_Alt) ||
+           states.testAny(KeyState::Super) || states.testAny(KeyState::Hyper) ||
+           states.testAny(KeyState::Meta) || states.testAny(KeyState::Super2) ||
+           states.testAny(KeyState::Hyper2);
+}
+
 unsigned int modsFlags(const KeyStates &states) {
     unsigned int m = 0;
     if (states.test(KeyState::Ctrl))
@@ -110,7 +120,9 @@ unsigned int modsFlags(const KeyStates &states) {
         m |= UVIE_MOD_ALT;
     if (states.test(KeyState::Shift))
         m |= UVIE_MOD_SHIFT;
-    if (states.test(KeyState::Super))
+    if (states.testAny(KeyState::Super) || states.testAny(KeyState::Hyper) ||
+        states.testAny(KeyState::Meta) || states.testAny(KeyState::Super2) ||
+        states.testAny(KeyState::Hyper2))
         m |= UVIE_MOD_WIN;
     return m;
 }
@@ -152,8 +164,7 @@ public:
         }
 
         // Hard modifiers: commit pending text, let the accelerator through.
-        if (keyEvent.rawKey().states().testAny(KeyState::Ctrl_Alt) ||
-            keyEvent.rawKey().states().test(KeyState::Super)) {
+        if (hasHardMod(keyEvent.rawKey().states())) {
             commitPending();
             return;
         }
@@ -227,10 +238,14 @@ private:
             return false;
         }
         auto s = raw.states();
+        // A held Super-family key means the chord belongs to the WM.
+        bool super = s.testAny(KeyState::Super) ||
+                     s.testAny(KeyState::Hyper) ||
+                     s.testAny(KeyState::Super2) ||
+                     s.testAny(KeyState::Hyper2);
         return s.test(KeyState::Ctrl) == !!cfg.hotkey_ctrl &&
                s.test(KeyState::Alt) == !!cfg.hotkey_alt &&
-               s.test(KeyState::Shift) == !!cfg.hotkey_shift &&
-               !s.test(KeyState::Super);
+               s.test(KeyState::Shift) == !!cfg.hotkey_shift && !super;
     }
 
     // Apply one plan action onto the preedit buffer. ForwardDelete
