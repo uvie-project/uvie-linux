@@ -39,11 +39,16 @@ libudev-dev libibus-1.0-dev fcitx5-modules-dev libfcitx5core-dev gettext`.
 - evdev 0.12 `fetch_events()` already resyncs on SYN_DROPPED via EVIOCG*
   and emits compensatory delta events — no extra handling needed.
 - `ibus-uvie` + `fcitx5-uvie` are thin C/C++ shells over `include/uvie.h`
-  → `target/release/libuvie_ffi.so`. They keep a `preedit` buffer mirroring
-  engine output since last commit; diffs (backspaces, suffix) apply to
-  that buffer, real text commits on word boundaries. They share
-  `uvie-config.h`, a dumb JSON-substring reader of the same
-  `~/.config/uvie/settings.json`.
+  → `target/release/libuvie_ffi.so`. They feed classified keys to the
+  `uvie_dispatch_*` ABI — `uvie_host::Dispatcher` over `extern "C"` in
+  `crates/uvie-ffi/src/dispatch.rs` — so macros, auto-capitalize,
+  escape-restore, and the Vi/En hotkey behave like the daemon. A `preedit`
+  buffer mirrors the returned `UvieAction` plan; real text commits when
+  `!uvie_dispatch_is_composing`. `edit_committed` stays OFF there —
+  committed app text can't be rewritten. They share `uvie-config.h`, a
+  dumb JSON-substring reader of the same
+  `~/.config/uvie/settings.json`; fcitx5 also honors `excluded_apps` via
+  `InputContext::program()` (ibus gets no app identity).
 - Settings live in `~/.config/uvie/settings.json` (serde_json pretty);
   `uvie-inputd` hot-reloads on mtime change; `uvie-ui` is the writer.
 

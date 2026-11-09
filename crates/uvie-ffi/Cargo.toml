@@ -12,3 +12,4 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 uvie.workspace = true
+uvie-host.workspace = true

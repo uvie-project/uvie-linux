@@ -56,6 +56,87 @@ size_t uvie_engine_edit_at(UvieEngine *engine, size_t caret_back, char ch,
 /* Reset all engine state. */
 void uvie_engine_reset(UvieEngine *engine);
 
+/* ------------------------------------------------------------------ */
+/* uvie_dispatch_* — the shared host dispatcher (uvie-host) over the     */
+/* same ABI. Frontends feed classified keys and get a consume/pass       */
+/* decision plus an action plan; this gives them the daemon's behavior   */
+/* (macros, auto-capitalize, escape-restore, caret/sentence state).      */
+/* ------------------------------------------------------------------ */
+
+/* Opaque dispatcher handle. */
+typedef struct UvieDispatcher UvieDispatcher;
+
+/* KeyKind codes for uvie_dispatch_feed. */
+enum UvieKeyKind {
+    UVIE_KIND_CHAR = 0,
+    UVIE_KIND_BACKSPACE = 1,
+    UVIE_KIND_ENTER = 2,
+    UVIE_KIND_TAB = 3,
+    UVIE_KIND_ESCAPE = 4,
+    UVIE_KIND_LEFT = 5,
+    UVIE_KIND_RIGHT = 6,
+    UVIE_KIND_NAVIGATION = 7,
+    UVIE_KIND_FORWARD_DELETE = 8,
+    UVIE_KIND_BREAK = 9,
+    UVIE_KIND_OTHER = 10,
+};
+
+/* `mods` bits for uvie_dispatch_feed. */
+#define UVIE_MOD_CTRL (1u << 0)
+#define UVIE_MOD_ALT (1u << 1)
+#define UVIE_MOD_SHIFT (1u << 2)
+#define UVIE_MOD_WIN (1u << 3)
+
+/* `ctx` bits for uvie_dispatch_feed. */
+#define UVIE_CTX_APP_EXCLUDED (1u << 0)
+#define UVIE_CTX_NON_LATIN (1u << 1)
+
+/* One plan action: type 0 = Backspace(n), 1 = ForwardDelete(n),
+ * 2 = Text (NUL-terminated UTF-8). Apply in order. */
+typedef struct UvieAction {
+    int type;
+    int n;
+    char text[512];
+} UvieAction;
+
+/* Lifecycle */
+UvieDispatcher *uvie_dispatch_new(void);
+void uvie_dispatch_free(UvieDispatcher *d);
+
+/* Engine options — same fields/defaults as the uvie_engine_set_* chain. */
+void uvie_dispatch_apply_options(UvieDispatcher *d, int input_method,
+                                 int quick_start, int quick_telex,
+                                 int modern_orthography, int relaxed_coda,
+                                 int english_override);
+
+/* Language: 0 = Vietnamese, 1 = English. */
+void uvie_dispatch_set_language(UvieDispatcher *d, int english);
+int uvie_dispatch_get_language(const UvieDispatcher *d);
+void uvie_dispatch_toggle_language(UvieDispatcher *d);
+
+void uvie_dispatch_set_auto_capitalize(UvieDispatcher *d, int on);
+void uvie_dispatch_set_macro_enabled(UvieDispatcher *d, int on);
+/* Post-commit (LabanKey) editing of already-committed words. Keep OFF in
+ * preedit-model frontends — they cannot rewrite text committed to the
+ * app. uvie-inputd leaves it on. */
+void uvie_dispatch_set_edit_committed(UvieDispatcher *d, int on);
+/* Replace the macro table from `path` (macros.json); returns entry
+ * count, 0 on missing/corrupt file. */
+int uvie_dispatch_load_macros(UvieDispatcher *d, const char *path);
+
+void uvie_dispatch_reset(UvieDispatcher *d);
+void uvie_dispatch_on_app_switch(UvieDispatcher *d, const char *app);
+void uvie_dispatch_on_pointer_down(UvieDispatcher *d);
+int uvie_dispatch_is_composing(const UvieDispatcher *d);
+
+/* Feed one key press. Returns 1 when the key is consumed (the frontend
+ * swallows it), 0 when it should pass through to the app. `out` receives
+ * up to `*n_out` actions; `*n_out` is updated to the action count. The
+ * plan must be applied BEFORE a passed-through key reaches the app. */
+int uvie_dispatch_feed(UvieDispatcher *d, int kind, unsigned int ch,
+                       unsigned int mods, unsigned int ctx,
+                       UvieAction *out, int *n_out);
+
 /* Introspection — all return a byte count written (excluding terminator). */
 int uvie_engine_is_composing(const UvieEngine *engine);
 size_t uvie_engine_committed_text(const UvieEngine *engine, char *out_buf, size_t out_len);

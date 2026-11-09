@@ -2,9 +2,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * fcitx5-uvie — UVie Vietnamese input engine for Fcitx5.
- * Thin shell around libuvie (Rust engine, uvie.h), diff-driven like the
- * IBus engine: a `preedit` string mirrors engine output; text is only
- * committed at word boundaries.
+ * Thin shell around the shared host dispatcher (uvie-host via
+ * uvie_dispatch_*): a `preedit` string mirrors the dispatcher's output
+ * plan; text is only committed at word boundaries.
  */
 #ifndef _FCITX5_UVIE_UVIE_IM_H_
 #define _FCITX5_UVIE_UVIE_IM_H_

@@ -4973,6 +4973,7 @@ name = "uvie-ffi"
 version = "1.1.1"
 dependencies = [
  "uvie",
+ "uvie-host",
 ]
 
 [[package]]
