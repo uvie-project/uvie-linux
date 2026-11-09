@@ -1,0 +1,39 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: UVie Project
+Label: UVie
+Suite: stable
+Codename: stable
+Date: Mon, 09 Nov 2026 03:15:56 UTC
+Architectures: amd64
+Components: main
+Description: UVie Vietnamese IME for Linux
+MD5Sum:
+ 01ecf0010b2f2cd96f2521733e467889 2707 main/binary-amd64/Packages
+ 90b82c4e53a426cf25a8ab1abbc0905d 1029 main/binary-amd64/Packages.gz
+ d7ad37429d163262cf3dec050ffdccc3 128 main/binary-amd64/Release
+SHA1:
+ c1027f89752a535e126bbfdd5f83d3cd18298ea8 2707 main/binary-amd64/Packages
+ c7f6ae30f0f75e46ddf973059d31112690a12d03 1029 main/binary-amd64/Packages.gz
+ 621e5a83c923b014eaa5f4377a8b405760b7c481 128 main/binary-amd64/Release
+SHA256:
+ d91ee9d46517d074a9a351d948e5b402dd57f17052c7157cd95d12254c453df6 2707 main/binary-amd64/Packages
+ b54fd1d627e0e16fef144e422550e1e4b03f5c4a680d33e31ce9c27196928a7b 1029 main/binary-amd64/Packages.gz
+ 4353b6272bd77dd18257ef62698caaccfae976c141c1fd85c4bb265c700a161d 128 main/binary-amd64/Release
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEEWWZeVevrRhRZgZNKFSQ+7AhQ3p8FAmrxOuwACgkQFSQ+7AhQ
+3p+4Pg//bE9MCzOeqiw1kOldS2RYpRoigCtpwSnSyNXw1r0AjsGIL4CI+u37pptF
+G8EJ9IpyC5LrNedgppaPh1nDeqgNVaNEf1A84Sn8YSGFdkQp3t1xXD8WdI6JRDxm
+Cnfz34RmXO14QaQC1z8bp1ELebka9eHLfmL/OTL63QkodrieTonp18m9AURaZ+kd
+g01NP89Gkkgie/zFID0cNclfGCb86ZdKi+8q9GGlJeO5xGJI3RbrDcA/2it9tb6G
+xL4r9l+jeQWv07y7Z+BSPJdyc7i3PiQPlMqBO2mxFaKszzL86YYFbkvg6EatpG5u
+Tq/UsO4hSucXVNDi0RAysnRTIhki5lVcu0C7PPmOe2QBjnIwhnhd5fEUufzdlae9
+X4/OkEyiad7GiQGCU3yZqyLPwoHnNMaJ1BxlCg8yHj3xUUHzUELlwLiCuNfon1qC
+KvQm1Nnbp3NlTTuVY2Er5bw7cAd9gRcvuqFMmhAV6Jgs/TmwoBQaLbP8IHh3CS2G
+2qvM24rLsD7zLvciF00vGsOP1ymsBm4g8MIBMv8klL4QltKYIhHbVTLvxkjjD+PE
+tlneuecJ8RM/4h+aMIDFMMfFgH9wynuCygyKsnDkGnQwxq0e+9xDgnDwWQBqpsUO
+FeHQV86IETw5Co+7MzEPTRJ5WnWyNb+hHp1qQnC76BIq15Vbkzw=
+=BEED
+-----END PGP SIGNATURE-----

@@ -1,0 +1,84 @@
+Package: fcitx5-uvie
+Version: 1.2.0
+Architecture: amd64
+Maintainer: UVie Project <xuanthu404@gmail.com>
+Depends: libuvie-ffi, fcitx5
+Recommends: uvie-ui
+Priority: optional
+Section: utils
+Filename: pool/main/f/fcitx5-uvie/fcitx5-uvie_1.2.0_amd64.deb
+Size: 11998
+SHA256: 180a5701a4146f80653642680cbd2796cd74b30e86937dc7565b2d885afa2ca4
+SHA1: 3a06ef8c3d295161aea1349f4e40be751c1732b7
+MD5sum: 3894e80d24f97b8e46b666911c4b430e
+Description: UVie Vietnamese IME - Fcitx5 addon
+
+Package: ibus-uvie
+Version: 1.2.0
+Architecture: amd64
+Maintainer: UVie Project <xuanthu404@gmail.com>
+Depends: libuvie-ffi, ibus (>= 1.5)
+Recommends: uvie-ui
+Priority: optional
+Section: utils
+Filename: pool/main/i/ibus-uvie/ibus-uvie_1.2.0_amd64.deb
+Size: 8690
+SHA256: 8dbedbfe44fb94db398b2db0e18f6ac692f5fe39bd9e992fd5a0f7adef36d06d
+SHA1: 1c3268a98f935c814e39d6fd973b2b8fd9279a02
+MD5sum: b8f03635f4b373de00e5ee797029a96b
+Description: UVie Vietnamese IME - IBus engine
+
+Package: libuvie-ffi
+Version: 1.2.0
+Architecture: amd64
+Maintainer: UVie Project <xuanthu404@gmail.com>
+Priority: optional
+Section: utils
+Filename: pool/main/libu/libuvie-ffi/libuvie-ffi_1.2.0_amd64.deb
+Size: 357628
+SHA256: cf8492a9233339434bee64d7ab3a7c0dd5e0b33c52b8b18db905fc245972e807
+SHA1: 46f544c3d43866e516ff4c57b5ea4a887767082e
+MD5sum: 637f728398aa4d062ccfd26e63583082
+Description: UVie Vietnamese input engine - shared FFI library
+
+Package: uvie
+Version: 1.2.0
+Architecture: amd64
+Maintainer: UVie Project <xuanthu404@gmail.com>
+Depends: uvie-inputd, uvie-ui
+Priority: optional
+Section: utils
+Filename: pool/main/u/uvie/uvie_1.2.0_amd64.deb
+Size: 598
+SHA256: 39f513f172443d89bdb1f0c3b3ad170c7071f0b25e5dadcf4384f90a288bf850
+SHA1: f7e8e096f585411686a9fae1c7d8fb76a548ab27
+MD5sum: 08bb3dc71868fef6de80b5c2d9b988b6
+Description: UVie Vietnamese IME for Linux (daemon + settings UI)
+
+Package: uvie-inputd
+Version: 1.2.0
+Architecture: amd64
+Maintainer: UVie Project <xuanthu404@gmail.com>
+Recommends: uvie-ui
+Priority: optional
+Section: utils
+Filename: pool/main/u/uvie-inputd/uvie-inputd_1.2.0_amd64.deb
+Size: 1691094
+SHA256: e37de93349ecb5698b0b4a0a41ad31f08c999cabaaaa61703c2f74a6b74b66e0
+SHA1: a372e31f13e53ab4fb47292959e99dfce2553920
+MD5sum: 8ec0bec8c8fb4cb62e2644f648d1c340
+Description: UVie Vietnamese IME - evdev input daemon (standalone)
+
+Package: uvie-ui
+Version: 1.2.0
+Architecture: amd64
+Maintainer: UVie Project <xuanthu404@gmail.com>
+Priority: optional
+Section: utils
+Filename: pool/main/u/uvie-ui/uvie-ui_1.2.0_amd64.deb
+Size: 7990056
+SHA256: e9d47bbaa98f458be4c48e62da3725025bcd0c7f77320c604efc4754a79ebf4a
+SHA1: 8aefd407b4ea5c3e476bd14abf16d30c09e0f4a4
+MD5sum: a09bb00e4bdabe6423461cd7bdae2bb8
+Description: UVie Vietnamese IME - settings window
+

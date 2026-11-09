@@ -1,0 +1,8 @@
+Origin: UVie Project
+Label: UVie
+Suite: stable
+Codename: stable
+Architectures: amd64
+Components: main
+Description: UVie Vietnamese IME for Linux
+SignWith: 15243EEC0850DE9F
