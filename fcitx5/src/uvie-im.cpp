@@ -233,8 +233,8 @@ private:
         // Key code encoding is frontend-dependent (xkb = evdev+8 on X11,
         // raw evdev possible elsewhere) — accept both. Trade-off: the
         // unused encoding can shadow a sibling physical key's chord.
-        if (raw.code() != static_cast<unsigned>(cfg.hotkey_key) &&
-            raw.code() != static_cast<unsigned>(cfg.hotkey_key) + 8) {
+        if (raw.code() != cfg.hotkey_key &&
+            raw.code() != cfg.hotkey_key + 8) {
             return false;
         }
         auto s = raw.states();
