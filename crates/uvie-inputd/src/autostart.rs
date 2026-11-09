@@ -27,5 +27,10 @@ pub fn sync(enabled: bool, path: &Path) -> io::Result<()> {
          Terminal=false\n\
          X-GNOME-Autostart-enabled=true\n"
     );
-    std::fs::write(path, desktop)
+    // This runs every housekeeping tick — skip the write when nothing
+    // changed rather than touching the file twice a second forever.
+    match std::fs::read_to_string(path) {
+        Ok(existing) if existing == desktop => Ok(()),
+        _ => std::fs::write(path, desktop),
+    }
 }

@@ -32,6 +32,7 @@ use crate::keys_linux::*;
 /// grab) our own device when scanning /dev/input.
 pub const VIRTUAL_DEVICE_NAME: &str = "uvie virtual keyboard";
 
+const EV_SYN: u16 = 0x00;
 const EV_KEY: u16 = 0x01;
 
 /// Restore the user's clipboard this long after the last flush — the app
@@ -152,10 +153,15 @@ impl Injector {
         let _ = self.vdev.emit(ev.event_type().0, ev.code(), ev.value());
     }
 
-    /// Forward a raw (type, code, value) triple.
+    /// Forward a raw (type, code, value) triple. Key events get a trailing
+    /// SYN_REPORT so each forwarded press/release is a complete frame even
+    /// if the source frame's SYN never arrives (or arrives late).
     pub fn emit_raw(&mut self, type_: u16, code: u16, value: i32) {
         self.flush_pending();
         let _ = self.vdev.emit(type_, code, value);
+        if type_ == EV_KEY {
+            let _ = self.vdev.emit(EV_SYN, 0, 0);
+        }
     }
 
     fn act_with(&mut self, action: &uvie_core::InputAction, overwrites: bool) {

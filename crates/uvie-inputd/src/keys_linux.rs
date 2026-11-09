@@ -34,6 +34,18 @@ pub const ALT_KEYS: &[u16] = &[KEY_LEFTALT, KEY_RIGHTALT];
 pub const SHIFT_KEYS: &[u16] = &[KEY_LEFTSHIFT, KEY_RIGHTSHIFT];
 pub const META_KEYS: &[u16] = &[KEY_LEFTMETA, KEY_RIGHTMETA];
 
+/// evdev BTN_LEFT..BTN_TASK — pointer buttons that may appear on a
+/// grabbed keyboard+pointer combo node.
+pub const BTN_MOUSE_MIN: u16 = 0x110;
+pub const BTN_MOUSE_MAX: u16 = 0x117;
+pub const BTN_TOUCH: u16 = 0x14a;
+
+/// True for pointer buttons — treated like a mouse click for
+/// composition purposes (the click may have moved the caret).
+pub fn is_pointer_button(code: u16) -> bool {
+    (BTN_MOUSE_MIN..=BTN_MOUSE_MAX).contains(&code) || code == BTN_TOUCH
+}
+
 /// Classify a key press. `ch` is the resolved character when the key is
 /// printable (from the xkb state).
 pub fn classify(code: u16, ch: Option<char>) -> KeyKind {

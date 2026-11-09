@@ -31,7 +31,13 @@ libudev-dev libibus-1.0-dev fcitx5-modules-dev libfcitx5core-dev gettext`.
   `RewriteMode::SelectOverwrite` (Shift+Left then type over) is forced for
   `chromium_apps` — same workaround as uvie-mac.
 - The daemon "consumes" keys: a pressed key's release/repeat is swallowed
-  too (`consumed` set) or apps see a dangling release.
+  too (`consumed` set) or apps see a dangling release. Symmetrically,
+  forwarded presses live in `down` — releases emit only for those, and a
+  device disconnect releases them all. `pressed_mods`/`consumed`/`down`
+  are all per (device, code): unplugging a keyboard mid-hold must not
+  wedge modifiers (stuck `ctrl` flag = IME silently dead) or keys.
+- evdev 0.12 `fetch_events()` already resyncs on SYN_DROPPED via EVIOCG*
+  and emits compensatory delta events — no extra handling needed.
 - `ibus-uvie` + `fcitx5-uvie` are thin C/C++ shells over `include/uvie.h`
   → `target/release/libuvie_ffi.so`. They keep a `preedit` buffer mirroring
   engine output since last commit; diffs (backspaces, suffix) apply to

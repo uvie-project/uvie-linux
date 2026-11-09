@@ -47,8 +47,13 @@ pub struct Daemon {
     /// Physical keys whose press we consumed — their release/repeat must be
     /// swallowed too so apps never see a dangling release.
     consumed: HashSet<(usize, u16)>,
-    /// Currently-held physical modifier key codes.
-    pressed_mods: HashSet<u16>,
+    /// Physical keys whose press we forwarded and whose release is still
+    /// pending. Releases are emitted only for these (a dangling release is
+    /// worse than none), and device teardown emits them all so apps don't
+    /// keep a phantom press.
+    down: HashSet<(usize, u16)>,
+    /// Currently-held physical modifier key codes, per source device.
+    pressed_mods: HashSet<(usize, u16)>,
     current_app: Option<String>,
     memory: LanguageMemory,
     watch_settings: FileWatch,
@@ -83,6 +88,7 @@ impl Daemon {
             focus: Focus::connect(),
             pool: DevicePool::new(tx),
             consumed: HashSet::new(),
+            down: HashSet::new(),
             pressed_mods: HashSet::new(),
             current_app: None,
             memory,
@@ -114,7 +120,7 @@ impl Daemon {
                 Ok(Msg::Dev(DevMsg::Event(ev))) => self.on_event(ev.dev, &ev.event),
                 Ok(Msg::Dev(DevMsg::Gone(id))) => {
                     self.pool.remove(id);
-                    self.consumed.retain(|(d, _)| *d != id);
+                    self.release_device_keys(id);
                 }
                 Ok(Msg::Tray(cmd)) => {
                     if self.on_tray(cmd) {
@@ -182,19 +188,23 @@ impl Daemon {
             2 if self.consumed.contains(&(dev, ev.code())) => {
                 self.dispatch_key(dev, ev.code(), true)
             }
-            2 => self.injector.forward(ev),
+            2 => self.forward_press(dev, ev.code(), true),
             _ => self.injector.forward(ev),
         }
     }
 
     fn on_release(&mut self, dev: usize, code: u16) {
         self.keymap.update(code, false);
-        self.pressed_mods.remove(&code);
+        self.pressed_mods.remove(&(dev, code));
         if self.consumed.remove(&(dev, code)) {
             // The press was swallowed; the release must be too.
             return;
         }
-        self.injector.emit_raw(EV_KEY, code, 0);
+        // Only release keys the app actually saw go down — a dangling
+        // release is worse than none (e.g. a key held before the grab).
+        if self.down.remove(&(dev, code)) {
+            self.injector.emit_raw(EV_KEY, code, 0);
+        }
     }
 
     fn on_press(&mut self, dev: usize, code: u16) {
@@ -203,17 +213,19 @@ impl Daemon {
         // only matters for the modifiers themselves (which produce no char).
         self.keymap.update(code, true);
         if is_modifier(code) {
-            self.pressed_mods.insert(code);
+            self.pressed_mods.insert((dev, code));
         }
 
-        // Toggle hotkey chord.
+        // Toggle hotkey chord — exact modifiers only; an extra Super held
+        // means the chord belongs to the WM, not to us.
         if keys_linux::chord_matches(
             &self.settings.hotkey,
             code,
             self.ctrl(),
             self.alt(),
             self.shift(),
-        ) {
+        ) && !self.win()
+        {
             self.toggle_language();
             self.consumed.insert((dev, code));
             return;
@@ -231,16 +243,20 @@ impl Daemon {
 
         self.track_focus();
 
+        // Pointer buttons riding on a grabbed combo node: a click may have
+        // moved the caret, so drop the composition + caret anchor like
+        // uvie-mac's pointer-down.
+        if keys_linux::is_pointer_button(code) {
+            self.dispatcher.on_pointer_down();
+        }
+
         let kind = keys_linux::classify(code, self.keymap.char_for(code));
         let key = KeyEvent {
             kind,
             ctrl: self.ctrl(),
             alt: self.alt(),
             shift: self.shift(),
-            win: self
-                .pressed_mods
-                .iter()
-                .any(|c| keys_linux::META_KEYS.contains(c)),
+            win: self.win(),
             injected: false,
         };
         let ctx = Context {
@@ -267,9 +283,37 @@ impl Daemon {
     }
 
     /// Forward a press or repeat event for a key that was not consumed.
-    fn forward_press(&mut self, _dev: usize, code: u16, is_repeat: bool) {
+    fn forward_press(&mut self, dev: usize, code: u16, is_repeat: bool) {
+        if is_repeat {
+            // A repeat only makes sense for a press the app saw — a repeat
+            // of a consumed press (hotkey, engine-absorbed letter) is an
+            // orphan the app can't interpret.
+            if !self.down.contains(&(dev, code)) {
+                return;
+            }
+        } else {
+            self.down.insert((dev, code));
+        }
         self.injector
             .emit_raw(EV_KEY, code, if is_repeat { 2 } else { 1 });
+    }
+
+    /// A device vanished (or its reader died): release every key the app
+    /// still thinks is held and drop all bookkeeping for it.
+    fn release_device_keys(&mut self, id: usize) {
+        let mut held: Vec<u16> = self
+            .down
+            .iter()
+            .filter(|(d, _)| *d == id)
+            .map(|(_, c)| *c)
+            .collect();
+        held.sort_unstable();
+        for code in held {
+            self.injector.emit_raw(EV_KEY, code, 0);
+        }
+        self.down.retain(|(d, _)| *d != id);
+        self.consumed.retain(|(d, _)| *d != id);
+        self.pressed_mods.retain(|(d, _)| *d != id);
     }
 
     // ------------------------------------------------------------------
@@ -324,19 +368,25 @@ impl Daemon {
     fn ctrl(&self) -> bool {
         self.pressed_mods
             .iter()
-            .any(|c| keys_linux::CTRL_KEYS.contains(c))
+            .any(|(_, c)| keys_linux::CTRL_KEYS.contains(c))
     }
 
     fn alt(&self) -> bool {
         self.pressed_mods
             .iter()
-            .any(|c| keys_linux::ALT_KEYS.contains(c))
+            .any(|(_, c)| keys_linux::ALT_KEYS.contains(c))
     }
 
     fn shift(&self) -> bool {
         self.pressed_mods
             .iter()
-            .any(|c| keys_linux::SHIFT_KEYS.contains(c))
+            .any(|(_, c)| keys_linux::SHIFT_KEYS.contains(c))
+    }
+
+    fn win(&self) -> bool {
+        self.pressed_mods
+            .iter()
+            .any(|(_, c)| keys_linux::META_KEYS.contains(c))
     }
 
     fn toggle_language(&mut self) {
