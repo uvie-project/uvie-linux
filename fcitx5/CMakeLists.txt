@@ -17,6 +17,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # while computing the install dirs.
 set(FCITX_INSTALL_USE_FCITX_SYS_PATHS On)
 
+# Minimum fcitx5 core the addon needs - expanded by configure_file into
+# uvie-addon.conf as "core:@REQUIRED_FCITX_VERSION@". Only stable 5.0-era
+# APIs are used, so the floor is 5.0.0 rather than the build-time version.
+set(REQUIRED_FCITX_VERSION 5.0.0)
+
 find_package(Fcitx5Core REQUIRED)
 find_package(Gettext REQUIRED)
 

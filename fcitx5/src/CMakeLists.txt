@@ -16,7 +16,12 @@ install(TARGETS uvie DESTINATION "${FCITX_INSTALL_ADDONDIR}")
 fcitx5_translate_desktop_file(uvie.conf.in uvie.conf)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/uvie.conf"
         DESTINATION "${FCITX_INSTALL_PKGDATADIR}/inputmethod" COMPONENT config)
-fcitx5_translate_desktop_file(uvie-addon.conf.in uvie-addon.conf)
+# fcitx5_translate_desktop_file is just msgfmt over the template - it does
+# NOT substitute @VARS@. Upstream's convention is .in.in -> configure_file
+# -> .in -> msgfmt -> .conf; the generated .in lives in the binary dir.
+configure_file(uvie-addon.conf.in.in uvie-addon.conf.in @ONLY)
+fcitx5_translate_desktop_file("${CMAKE_CURRENT_BINARY_DIR}/uvie-addon.conf.in"
+    uvie-addon.conf)
 # The addon name is the config file stem, so it must be installed as
 # `uvie.conf` to match `Addon=uvie` in the input method definition.
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/uvie-addon.conf"

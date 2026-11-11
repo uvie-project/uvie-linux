@@ -65,6 +65,12 @@ libudev-dev libibus-1.0-dev fcitx5-modules-dev libfcitx5core-dev gettext`.
   (`use xcb::Xid`).
 - `add_fcitx5_addon` exists only inside fcitx5's source tree; we use plain
   `add_library(MODULE)`.
+- fcitx5 dlopens addon libs ONLY from its compile-time
+  `FCITX_INSTALL_ADDONDIR` (+ `$FCITX_ADDON_DIRS`) —
+  `/usr/lib/<triplet>/fcitx5` on Debian multiarch, `/usr/lib64/fcitx5` on
+  Fedora. `dpkg -L fcitx5-uvie` showing `/usr/lib/fcitx5/libuvie.so` means
+  "Could not locate library" at runtime. `build-debs.sh` must stage via
+  `DESTDIR=... cmake --install build-fcitx5`, never a manual cp.
 - `G_DECLARE_FINAL_TYPE` for IBusEngine needs a manual
   `G_DEFINE_AUTOPTR_CLEANUP_FUNC(IBusEngine, g_object_unref)` — ibus 1.5
   headers ship no autoptr for IBusEngine.

@@ -57,6 +57,6 @@ jobs:
             target/release/libuvie_ffi.so
             build-ibus/ibus-engine-uvie
             build-ibus/uvie.xml
-            build-fcitx5/libuvie.so
+            build-fcitx5/src/libuvie.so
             build-fcitx5/src/uvie.conf
             build-fcitx5/src/uvie-addon.conf

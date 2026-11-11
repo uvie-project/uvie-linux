@@ -85,11 +85,12 @@ mkdeb ibus-uvie "libuvie-ffi, ibus (>= 1.5)" "uvie-ui" "UVie Vietnamese IME - IB
 
 # ---- fcitx5-uvie ------------------------------------------------------
 r=$ROOT/fcitx5-uvie
-mkdir -p "$r/usr/lib/fcitx5" "$r/usr/share/fcitx5/addon" \
-    "$r/usr/share/fcitx5/inputmethod"
-cp build-fcitx5/src/libuvie.so "$r/usr/lib/fcitx5/"
-cp build-fcitx5/src/uvie-addon.conf "$r/usr/share/fcitx5/addon/uvie.conf"
-cp build-fcitx5/src/uvie.conf "$r/usr/share/fcitx5/inputmethod/uvie.conf"
+# fcitx5 dlopens addon libraries only from its compile-time
+# FCITX_INSTALL_ADDONDIR (/usr/lib/<triplet>/fcitx5 on Debian multiarch),
+# never /usr/lib/fcitx5. Reuse the CMake install rules - they force
+# FCITX_INSTALL_USE_FCITX_SYS_PATHS=On - so the module lands where this
+# fcitx5 build actually looks.
+DESTDIR="$(pwd)/$r" cmake --install build-fcitx5 --config Release
 mkdeb fcitx5-uvie "libuvie-ffi, fcitx5" "uvie-ui" "UVie Vietnamese IME - Fcitx5 addon" "$r"
 
 # ---- uvie (metapackage: standalone daemon path) ------------------------
