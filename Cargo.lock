@@ -4961,7 +4961,7 @@ dependencies = [
 
 [[package]]
 name = "uvie-core"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -4970,7 +4970,7 @@ dependencies = [
 
 [[package]]
 name = "uvie-ffi"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "uvie",
  "uvie-host",
@@ -4988,7 +4988,7 @@ dependencies = [
 
 [[package]]
 name = "uvie-inputd"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "arboard",
  "evdev",
@@ -5005,7 +5005,7 @@ dependencies = [
 
 [[package]]
 name = "uvie-ui"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "open",
  "serde_json",
