@@ -557,4 +557,49 @@ mod tests {
             uvie_dispatch_free(std::ptr::null_mut());
         }
     }
+
+    /// Like `feed_char` but also returns the largest backspace count the
+    /// plan asked for (what the frontend would have to erase).
+    fn feed_char_bs(d: *mut UvieDispatcher, screen: &mut String, ch: char) -> usize {
+        let mut actions: [UvieAction; 16] = std::array::from_fn(|_| UvieAction::default());
+        let mut n: c_int = actions.len() as c_int;
+        let consumed =
+            unsafe { uvie_dispatch_feed(d, 0, ch as u32, 0, 0, actions.as_mut_ptr(), &mut n) };
+        let slice = &actions[..n.max(0) as usize];
+        let mut max_bs = 0usize;
+        for a in slice {
+            if a.type_ == 0 {
+                max_bs = max_bs.max(a.n as usize);
+            }
+        }
+        apply(screen, slice);
+        if consumed == 0 {
+            screen.push(ch);
+        }
+        max_bs
+    }
+
+    /// The preedit frontends (ibus/fcitx) run with edit_committed off:
+    /// committed text cannot be rewritten, so no returned plan may ask for
+    /// more backspaces than the word typed so far.
+    #[test]
+    fn edit_committed_off_bounds_backspaces() {
+        let d = new_dispatch();
+        // Mirror ibus/uvie-config.h: Telex + english_override on, edit off.
+        uvie_dispatch_apply_options(d, 0, 0, 0, 0, 0, 1);
+        uvie_dispatch_set_edit_committed(d, 0);
+        let mut screen = String::new();
+        let mut word_len = 0usize;
+        for ch in "this is a test ".chars() {
+            let bs = feed_char_bs(d, &mut screen, ch);
+            assert!(bs <= word_len, "bs={bs} at {ch:?} (word_len={word_len})");
+            if ch == ' ' {
+                word_len = 0;
+            } else {
+                word_len += 1;
+            }
+        }
+        unsafe { uvie_dispatch_free(d) };
+        assert_eq!(screen, "thí í a test ");
+    }
 }
