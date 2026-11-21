@@ -11,7 +11,18 @@ cargo fmt --all --check
 cargo build --release -p uvie-ffi      # libuvie_ffi.{so,a} for the engines
 cmake -S ibus -B build-ibus && cmake --build build-ibus
 cmake -S fcitx5 -B build-fcitx5 && cmake --build build-fcitx5
+
+docker/run.sh                      # full check suite in a Linux container
+docker/run.sh <cmd>                # any command, repo bind-mounted at /work
+UVIE_DOCKER_PRIVILEGED=1 docker/run.sh bash docker/e2e/run_e2e.sh
 ```
+
+`docker/run.sh` keeps CARGO_TARGET_DIR and CARGO_HOME on named volumes;
+cmake build dirs land under the target volume, not the repo. The e2e
+script is a headless daemon smoke (uinput feeder keyboard -> uvie-inputd
+-> strace of vdev writes): this container can only open /dev/input/event0
+(other minors EPERM), so output is read via strace, not an evdev reader,
+and clipboard injection mode is not exercised.
 
 System deps: `pkg-config libxkbcommon-dev libxcb1-dev libfontconfig1-dev
 libudev-dev libibus-1.0-dev fcitx5-modules-dev libfcitx5core-dev gettext`.
