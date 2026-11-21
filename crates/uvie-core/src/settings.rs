@@ -15,6 +15,7 @@ pub use uvie_host::LanguagePref;
 /// `key` is an evdev key code (e.g. KEY_Z = 44, see input-event-codes.h);
 /// serialized as e.g. `"Ctrl+Shift+Z"` by the host.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Hotkey {
     pub ctrl: bool,
     pub alt: bool,
