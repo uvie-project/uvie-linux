@@ -1,84 +1,84 @@
 Package: fcitx5-uvie
-Version: 1.3.0
+Version: 1.3.1
 Architecture: amd64
 Maintainer: UVie Project <xuanthu404@gmail.com>
 Depends: libuvie-ffi, fcitx5
 Recommends: uvie-ui
 Priority: optional
 Section: utils
-Filename: pool/main/f/fcitx5-uvie/fcitx5-uvie_1.3.0_amd64.deb
+Filename: pool/main/f/fcitx5-uvie/fcitx5-uvie_1.3.1_amd64.deb
 Size: 12388
-SHA256: 11bbe064d8ea1c8c4406796714729dddc85e7c8c77fb0d60259d0b6152e61d24
-SHA1: 4cb3262db8e01d06b21930fe6984322137a8d587
-MD5sum: 204199062ab0089d990b49544da9d708
+SHA256: 24684aec3f7eb0416dafe4c475edfc5f57aab50b0a1828e7718d6eae645f7239
+SHA1: a2aa030ddbf75b8f88e07c9b51db5fe4a876cbce
+MD5sum: f584a6641b07bb4b15178982d0846b56
 Description: UVie Vietnamese IME - Fcitx5 addon
 
 Package: ibus-uvie
-Version: 1.3.0
+Version: 1.3.1
 Architecture: amd64
 Maintainer: UVie Project <xuanthu404@gmail.com>
 Depends: libuvie-ffi, ibus (>= 1.5)
 Recommends: uvie-ui
 Priority: optional
 Section: utils
-Filename: pool/main/i/ibus-uvie/ibus-uvie_1.3.0_amd64.deb
-Size: 8796
-SHA256: 115eb628006de8854b01b706e945702798881bb933412ba7be286d3f1ec01657
-SHA1: 7d73de5017709d51a0cf7f1811be7f26635dce59
-MD5sum: d4f7cd7162ddebe5993ec60e7d5fb135
+Filename: pool/main/i/ibus-uvie/ibus-uvie_1.3.1_amd64.deb
+Size: 8790
+SHA256: 23c314c7792f4ef28d4cddf1474ddb4a9b4c4f09d58d5fdb269f06d910186b4c
+SHA1: 40e45ae53b0967a7f16f739cdbd38c1d061e4f12
+MD5sum: 69abb3426de9aaf2c3941f9abb3009c6
 Description: UVie Vietnamese IME - IBus engine
 
 Package: libuvie-ffi
-Version: 1.3.0
+Version: 1.3.1
 Architecture: amd64
 Maintainer: UVie Project <xuanthu404@gmail.com>
 Priority: optional
 Section: utils
-Filename: pool/main/libu/libuvie-ffi/libuvie-ffi_1.3.0_amd64.deb
-Size: 486404
-SHA256: 5110e7d49bf1ee5939a4f8d391cb97125d54e7b06bf4cd548d976adfe0c64762
-SHA1: b1dc0eadce6b5596af659882c9cbf73c8823c690
-MD5sum: 1e186aabbe2eadf988d64369b634a158
+Filename: pool/main/libu/libuvie-ffi/libuvie-ffi_1.3.1_amd64.deb
+Size: 487506
+SHA256: 666992318a53796408cf02359227f5d0fb1e15dfbc44f9baa626c815e527d2b1
+SHA1: 304b485afd04d112adf4e75de6f4ada0ab3ad690
+MD5sum: a8ec4b86c01b8dc04eba8a3f462ccdbe
 Description: UVie Vietnamese input engine - shared FFI library
 
 Package: uvie
-Version: 1.3.0
+Version: 1.3.1
 Architecture: amd64
 Maintainer: UVie Project <xuanthu404@gmail.com>
 Depends: uvie-inputd, uvie-ui
 Priority: optional
 Section: utils
-Filename: pool/main/u/uvie/uvie_1.3.0_amd64.deb
-Size: 596
-SHA256: f056b4acc69d9c2b2826de5674321dab48c34415d86e115fc4d5f0e59db8c92b
-SHA1: 5e04b74539c6a5bbb895e4d0af4fa4e4d7fe90c4
-MD5sum: 1fe23a8213acd9cfad0ef02f0c8f36d1
+Filename: pool/main/u/uvie/uvie_1.3.1_amd64.deb
+Size: 594
+SHA256: e006554c701986b8715fd1e0fe6fb4d2391f61556091105e1009e6670607f66a
+SHA1: 4144931192c7c5c39b2d69ecf3c39916bc6ccc5c
+MD5sum: 7d18f4535c13deb7194754437548880e
 Description: UVie Vietnamese IME for Linux (daemon + settings UI)
 
 Package: uvie-inputd
-Version: 1.3.0
+Version: 1.3.1
 Architecture: amd64
 Maintainer: UVie Project <xuanthu404@gmail.com>
 Recommends: uvie-ui
 Priority: optional
 Section: utils
-Filename: pool/main/u/uvie-inputd/uvie-inputd_1.3.0_amd64.deb
-Size: 1797000
-SHA256: 97c982ecec7e69a299379b41e90a2288ce0f4a8eeac3fe1a6f9ac8c621ef57a8
-SHA1: 0127c92fd232feddcb3db1fd9880ff796ac2c773
-MD5sum: 08fb88d9dcecd341cfde54d64d05d4c3
+Filename: pool/main/u/uvie-inputd/uvie-inputd_1.3.1_amd64.deb
+Size: 1800026
+SHA256: 0a230f8e1c900b3dc4585f4e1d4348270c678a4afedb3792009edf85b01a3aee
+SHA1: 6db27ffb6a0d4add3039b6357e68f58b50348444
+MD5sum: c8ea63e862e86d5751a68b5dc20bf4d7
 Description: UVie Vietnamese IME - evdev input daemon (standalone)
 
 Package: uvie-ui
-Version: 1.3.0
+Version: 1.3.1
 Architecture: amd64
 Maintainer: UVie Project <xuanthu404@gmail.com>
 Priority: optional
 Section: utils
-Filename: pool/main/u/uvie-ui/uvie-ui_1.3.0_amd64.deb
-Size: 7966706
-SHA256: a3a4beba5a4d45ac4ae56df63b4ae4e61cb35b96be438c9e344a238c20216b1d
-SHA1: bcda01532ccc3ec8d8650f08479473f43c2996b9
-MD5sum: f6ef2208c4cb3c970531335d20b3683c
+Filename: pool/main/u/uvie-ui/uvie-ui_1.3.1_amd64.deb
+Size: 7966774
+SHA256: 3e1c9371300f582e3bff473518e2ccf220c8d667e7202994630c76ac821f9a68
+SHA1: eb2fee4afd1cfa1b73f75020c65afca48073541b
+MD5sum: 679f137c9a71dfd0401b7032adba0456
 Description: UVie Vietnamese IME - settings window
 
