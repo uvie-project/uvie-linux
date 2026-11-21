@@ -24,6 +24,15 @@ EXPECTED=$(printf 'ch\xc3\xa0o vi\xe1\xbb\x87t \xc4\x91\xc6\xb0\xe1\xbb\xa3c ')
 
 rm -rf "$OUTDIR"
 mkdir -p "$OUTDIR"
+# Safety: the daemon grabs every keyboard it can open and this script traces
+# what it emits. Refuse to run where real input devices are visible (a
+# privileged container on a native Linux host), so physical keystrokes are
+# never grabbed or logged.
+if grep -q 'Handlers=.*event' /proc/bus/input/devices; then
+    echo "refusing to run: the kernel already lists input devices (real keyboards may be visible)" >&2
+    exit 2
+fi
+
 rm -f "$FEED_FIFO"
 mkfifo "$FEED_FIFO"
 
