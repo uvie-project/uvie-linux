@@ -602,4 +602,41 @@ mod tests {
         unsafe { uvie_dispatch_free(d) };
         assert_eq!(screen, "thí í a test ");
     }
+
+    /// Feed one key of `kind` through the ABI and apply its plan; for a Pass
+    /// the app handles the key natively (a passed Backspace pops the screen).
+    fn feed_kind(d: *mut UvieDispatcher, screen: &mut String, kind: c_int, ch: char) {
+        let mut actions: [UvieAction; 16] = std::array::from_fn(|_| UvieAction::default());
+        let mut n: c_int = actions.len() as c_int;
+        let consumed =
+            unsafe { uvie_dispatch_feed(d, kind, ch as u32, 0, 0, actions.as_mut_ptr(), &mut n) };
+        apply(screen, &actions[..n.max(0) as usize]);
+        if consumed == 0 {
+            if kind == 1 {
+                screen.pop();
+            } else {
+                screen.push(ch);
+            }
+        }
+    }
+
+    /// The separator delete is an exact undo through the ABI too: on an
+    /// edit_committed-off host (ibus/fcitx) deleting the '.' drops the
+    /// code-token state it created, so the next word renders Vietnamese.
+    #[test]
+    fn edit_committed_off_separator_delete_undoes_code_dot() {
+        let d = new_dispatch();
+        uvie_dispatch_apply_options(d, 0, 0, 0, 0, 0, 1);
+        uvie_dispatch_set_edit_committed(d, 0);
+        let mut screen = String::new();
+        for ch in "chaof.".chars() {
+            feed_kind(d, &mut screen, 0, ch);
+        }
+        feed_kind(d, &mut screen, 1, '\0');
+        for ch in "dduwowcj ".chars() {
+            feed_kind(d, &mut screen, 0, ch);
+        }
+        unsafe { uvie_dispatch_free(d) };
+        assert_eq!(screen, "chàođược ");
+    }
 }
