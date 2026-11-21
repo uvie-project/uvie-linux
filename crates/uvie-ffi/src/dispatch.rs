@@ -330,3 +330,231 @@ pub extern "C" fn uvie_dispatch_is_composing(d: *const UvieDispatcher) -> c_int 
     }
     unsafe { (*d).d.session.is_composing() as c_int }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::CString;
+
+    /// Feed one printable key (kind 0, no mods, no ctx) and apply the plan
+    /// to `screen` the way a frontend would: consume or pass, the plan runs
+    /// first; a passed-through key appends itself.
+    fn feed_char(d: *mut UvieDispatcher, screen: &mut String, ch: char) -> c_int {
+        let mut actions: [UvieAction; 16] = std::array::from_fn(|_| UvieAction::default());
+        let mut n: c_int = actions.len() as c_int;
+        let consumed =
+            unsafe { uvie_dispatch_feed(d, 0, ch as u32, 0, 0, actions.as_mut_ptr(), &mut n) };
+        apply(screen, &actions[..n.max(0) as usize]);
+        if consumed == 0 {
+            screen.push(ch);
+        }
+        consumed
+    }
+
+    fn apply(screen: &mut String, actions: &[UvieAction]) {
+        for a in actions {
+            match a.type_ {
+                0 => {
+                    for _ in 0..a.n {
+                        screen.pop();
+                    }
+                }
+                1 => {}
+                2 => {
+                    let len = a.text.iter().position(|&b| b == 0).unwrap_or(a.text.len());
+                    screen.push_str(std::str::from_utf8(&a.text[..len]).unwrap());
+                }
+                _ => panic!("unknown action type {}", a.type_),
+            }
+        }
+    }
+
+    fn feed_text(d: *mut UvieDispatcher, screen: &mut String, text: &str) {
+        for ch in text.chars() {
+            feed_char(d, screen, ch);
+        }
+    }
+
+    fn new_dispatch() -> *mut UvieDispatcher {
+        uvie_dispatch_new()
+    }
+
+    #[test]
+    fn telex_vectors_end_to_end() {
+        let d = new_dispatch();
+        // Default session = Telex with default EngineOptions (english_override
+        // is OFF here, unlike the daemon - plain engine defaults).
+        let mut screen = String::new();
+        feed_text(d, &mut screen, "chaof ");
+        assert_eq!(screen, "chào ");
+        let mut screen = String::new();
+        feed_text(d, &mut screen, "vieetj ");
+        assert_eq!(screen, "việt ");
+        let mut screen = String::new();
+        feed_text(d, &mut screen, "dduwowcj ");
+        assert_eq!(screen, "được ");
+        unsafe { uvie_dispatch_free(d) };
+    }
+
+    #[test]
+    fn feed_returns_consume_for_letters() {
+        let d = new_dispatch();
+        let mut screen = String::new();
+        assert_eq!(feed_char(d, &mut screen, 'v'), 1);
+        unsafe { uvie_dispatch_free(d) };
+    }
+
+    #[test]
+    fn apply_options_switches_to_vni() {
+        let d = new_dispatch();
+        // method 1 = VNI, english_override on like the default settings.
+        uvie_dispatch_apply_options(d, 1, 0, 0, 0, 0, 1);
+        let mut screen = String::new();
+        feed_text(d, &mut screen, "vie65t ");
+        assert_eq!(screen, "việt ");
+        unsafe { uvie_dispatch_free(d) };
+    }
+
+    #[test]
+    fn apply_options_ignores_out_of_range_method() {
+        let d = new_dispatch();
+        uvie_dispatch_apply_options(d, 99, 0, 0, 0, 0, 0);
+        let mut screen = String::new();
+        feed_text(d, &mut screen, "chaof ");
+        assert_eq!(screen, "chào ", "method must stay Telex");
+        unsafe { uvie_dispatch_free(d) };
+    }
+
+    #[test]
+    fn set_get_toggle_language() {
+        let d = new_dispatch();
+        assert_eq!(uvie_dispatch_get_language(d), 0);
+        uvie_dispatch_set_language(d, 1);
+        assert_eq!(uvie_dispatch_get_language(d), 1);
+        uvie_dispatch_toggle_language(d);
+        assert_eq!(uvie_dispatch_get_language(d), 0);
+        uvie_dispatch_toggle_language(d);
+        assert_eq!(uvie_dispatch_get_language(d), 1);
+        unsafe { uvie_dispatch_free(d) };
+    }
+
+    #[test]
+    fn english_mode_passes_keys_through() {
+        let d = new_dispatch();
+        uvie_dispatch_set_language(d, 1);
+        let mut screen = String::new();
+        for ch in "viets".chars() {
+            assert_eq!(feed_char(d, &mut screen, ch), 0, "'{ch}' must pass");
+        }
+        assert_eq!(screen, "viets");
+        unsafe { uvie_dispatch_free(d) };
+    }
+
+    #[test]
+    fn is_composing_before_and_after_commit_space() {
+        let d = new_dispatch();
+        let mut screen = String::new();
+        feed_text(d, &mut screen, "vie");
+        assert_eq!(uvie_dispatch_is_composing(d), 1);
+        feed_char(d, &mut screen, ' ');
+        assert_eq!(uvie_dispatch_is_composing(d), 0);
+        unsafe { uvie_dispatch_free(d) };
+    }
+
+    #[test]
+    fn load_macros_and_expand() {
+        let dir = std::env::temp_dir().join(format!("uvie-ffi-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("macros.json");
+        let mut t = MacroTable::default();
+        t.add("sg", "Sài Gòn");
+        t.save(&path).unwrap();
+
+        let d = new_dispatch();
+        uvie_dispatch_set_macro_enabled(d, 1);
+        let cpath = CString::new(path.to_str().unwrap()).unwrap();
+        let count = unsafe { uvie_dispatch_load_macros(d, cpath.as_ptr()) };
+        assert_eq!(count, 1);
+        let mut screen = String::new();
+        feed_text(d, &mut screen, "sg ");
+        assert_eq!(screen, "Sài Gòn");
+
+        // A missing file loads zero entries.
+        let missing = CString::new(dir.join("nope.json").to_str().unwrap()).unwrap();
+        assert_eq!(unsafe { uvie_dispatch_load_macros(d, missing.as_ptr()) }, 0);
+        unsafe { uvie_dispatch_free(d) };
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn reset_drops_composition() {
+        let d = new_dispatch();
+        let mut screen = String::new();
+        feed_text(d, &mut screen, "vie");
+        assert_eq!(uvie_dispatch_is_composing(d), 1);
+        uvie_dispatch_reset(d);
+        assert_eq!(uvie_dispatch_is_composing(d), 0);
+        unsafe { uvie_dispatch_free(d) };
+    }
+
+    #[test]
+    fn null_arguments_are_safe() {
+        let mut actions: [UvieAction; 4] = std::array::from_fn(|_| UvieAction::default());
+        let mut n: c_int = actions.len() as c_int;
+        unsafe {
+            assert_eq!(
+                uvie_dispatch_feed(
+                    std::ptr::null_mut(),
+                    0,
+                    'a' as u32,
+                    0,
+                    0,
+                    actions.as_mut_ptr(),
+                    &mut n,
+                ),
+                0
+            );
+        }
+        let d = new_dispatch();
+        // NULL out / n_out pointers must also bail out.
+        unsafe {
+            assert_eq!(
+                uvie_dispatch_feed(d, 0, 'a' as u32, 0, 0, std::ptr::null_mut(), &mut n),
+                0
+            );
+            assert_eq!(
+                uvie_dispatch_feed(
+                    d,
+                    0,
+                    'a' as u32,
+                    0,
+                    0,
+                    actions.as_mut_ptr(),
+                    std::ptr::null_mut(),
+                ),
+                0
+            );
+        }
+        uvie_dispatch_apply_options(std::ptr::null_mut(), 0, 0, 0, 0, 0, 0);
+        uvie_dispatch_set_language(std::ptr::null_mut(), 1);
+        uvie_dispatch_toggle_language(std::ptr::null_mut());
+        uvie_dispatch_set_auto_capitalize(std::ptr::null_mut(), 1);
+        uvie_dispatch_set_macro_enabled(std::ptr::null_mut(), 1);
+        uvie_dispatch_set_edit_committed(std::ptr::null_mut(), 1);
+        uvie_dispatch_reset(std::ptr::null_mut());
+        uvie_dispatch_on_pointer_down(std::ptr::null_mut());
+        assert_eq!(uvie_dispatch_get_language(std::ptr::null()), 0);
+        assert_eq!(uvie_dispatch_is_composing(std::ptr::null()), 0);
+        unsafe {
+            assert_eq!(
+                uvie_dispatch_load_macros(std::ptr::null_mut(), std::ptr::null()),
+                0
+            );
+            // NULL path on a live dispatcher: empty table, no crash.
+            assert_eq!(uvie_dispatch_load_macros(d, std::ptr::null()), 0);
+            uvie_dispatch_on_app_switch(d, std::ptr::null());
+            uvie_dispatch_free(d);
+            uvie_dispatch_free(std::ptr::null_mut());
+        }
+    }
+}

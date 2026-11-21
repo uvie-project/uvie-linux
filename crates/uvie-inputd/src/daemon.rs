@@ -458,3 +458,50 @@ fn engine_options(s: &Settings) -> EngineOptions {
 fn autostart_sync(settings: &Settings) -> std::io::Result<()> {
     crate::autostart::sync(settings.launch_at_login, &config::autostart_path())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_modifier_covers_all_modifier_groups() {
+        for code in keys_linux::CTRL_KEYS
+            .iter()
+            .chain(keys_linux::ALT_KEYS)
+            .chain(keys_linux::SHIFT_KEYS)
+            .chain(keys_linux::META_KEYS)
+        {
+            assert!(is_modifier(*code), "code {code}");
+        }
+        assert!(is_modifier(keys_linux::KEY_CAPSLOCK));
+        for code in [30, 44, 1, 28, 57, 0x110] {
+            assert!(!is_modifier(code), "code {code}");
+        }
+    }
+
+    #[test]
+    fn engine_options_maps_settings_flags_one_to_one() {
+        let s = Settings::default();
+        let o = engine_options(&s);
+        assert_eq!(o.quick_start, s.quick_start);
+        assert_eq!(o.quick_telex, s.quick_telex);
+        assert_eq!(o.modern_orthography, s.modern_orthography);
+        assert_eq!(o.relaxed_coda, s.relaxed_coda);
+        assert_eq!(o.english_override, s.english_override);
+        // Inverted flags map through too.
+        let s = Settings {
+            quick_start: true,
+            quick_telex: true,
+            modern_orthography: true,
+            relaxed_coda: true,
+            english_override: false,
+            ..Default::default()
+        };
+        let o = engine_options(&s);
+        assert!(o.quick_start);
+        assert!(o.quick_telex);
+        assert!(o.modern_orthography);
+        assert!(o.relaxed_coda);
+        assert!(!o.english_override);
+    }
+}

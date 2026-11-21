@@ -73,3 +73,85 @@ pub fn classify(code: u16, ch: Option<char>) -> KeyKind {
 pub fn chord_matches(hotkey: &Hotkey, code: u16, ctrl: bool, alt: bool, shift: bool) -> bool {
     code == hotkey.key && ctrl == hotkey.ctrl && alt == hotkey.alt && shift == hotkey.shift
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classify_fixed_keys_before_char() {
+        assert!(matches!(classify(KEY_BACKSPACE, None), KeyKind::Backspace));
+        assert!(matches!(classify(KEY_ENTER, None), KeyKind::Enter));
+        assert!(matches!(classify(KEY_KPENTER, None), KeyKind::Enter));
+        assert!(matches!(classify(KEY_TAB, None), KeyKind::Tab));
+        assert!(matches!(classify(KEY_ESC, None), KeyKind::Escape));
+        assert!(matches!(classify(KEY_LEFT, None), KeyKind::Left));
+        assert!(matches!(classify(KEY_RIGHT, None), KeyKind::Right));
+        for code in [
+            KEY_UP,
+            KEY_DOWN,
+            KEY_HOME,
+            KEY_END,
+            KEY_PAGEUP,
+            KEY_PAGEDOWN,
+            KEY_INSERT,
+        ] {
+            assert!(
+                matches!(classify(code, None), KeyKind::Navigation),
+                "code {code}"
+            );
+        }
+        assert!(matches!(classify(KEY_DELETE, None), KeyKind::ForwardDelete));
+    }
+
+    #[test]
+    fn classify_fixed_keys_win_over_char() {
+        // A resolved char on a named key must not turn it into KeyKind::Char
+        // (e.g. Enter resolving '\r').
+        assert!(matches!(classify(KEY_ENTER, Some('\r')), KeyKind::Enter));
+        assert!(matches!(
+            classify(KEY_BACKSPACE, Some('x')),
+            KeyKind::Backspace
+        ));
+    }
+
+    #[test]
+    fn classify_printable_char() {
+        assert!(matches!(classify(30, Some('a')), KeyKind::Char('a')));
+        // Control chars (e.g. Ctrl+key resolving to a control code) are Other.
+        assert!(matches!(classify(30, Some('\u{1}')), KeyKind::Other));
+        assert!(matches!(classify(30, None), KeyKind::Other));
+        // Modifier codes produce no char.
+        assert!(matches!(classify(KEY_LEFTSHIFT, None), KeyKind::Other));
+    }
+
+    #[test]
+    fn chord_matches_exact_modifiers_only() {
+        let h = Hotkey::default(); // Ctrl+Shift+Z (key 44)
+        assert!(chord_matches(&h, 44, true, false, true));
+        // Wrong key, missing modifier, extra modifier: no match.
+        assert!(!chord_matches(&h, 45, true, false, true));
+        assert!(!chord_matches(&h, 44, false, false, true));
+        assert!(!chord_matches(&h, 44, true, true, true)); // extra Alt held
+                                                           // A hotkey with no modifiers still requires none held.
+        let bare = Hotkey {
+            ctrl: false,
+            alt: false,
+            shift: false,
+            key: 59,
+        };
+        assert!(chord_matches(&bare, 59, false, false, false));
+        assert!(!chord_matches(&bare, 59, true, false, false));
+    }
+
+    #[test]
+    fn is_pointer_button_range() {
+        assert!(is_pointer_button(0x110)); // BTN_LEFT
+        assert!(is_pointer_button(0x117)); // BTN_TASK
+        assert!(is_pointer_button(0x14a)); // BTN_TOUCH
+        assert!(!is_pointer_button(0x10f));
+        assert!(!is_pointer_button(0x118));
+        assert!(!is_pointer_button(30)); // KEY_A
+        assert!(!is_pointer_button(KEY_LEFTCTRL));
+    }
+}

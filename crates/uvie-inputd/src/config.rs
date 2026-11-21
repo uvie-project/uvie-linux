@@ -65,3 +65,61 @@ impl FileWatch {
         changed
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    fn temp_path(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("uvie-config-test-{}-{name}", std::process::id()))
+    }
+
+    #[test]
+    fn file_watch_unchanged_is_quiet() {
+        let path = temp_path("quiet.json");
+        std::fs::write(&path, "{}").unwrap();
+        let mut w = FileWatch::new(path.clone());
+        assert!(!w.changed());
+        assert!(!w.changed());
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn file_watch_detects_newer_mtime() {
+        let path = temp_path("newer.json");
+        std::fs::write(&path, "{}").unwrap();
+        let mut w = FileWatch::new(path.clone());
+        // Rewrite and force a newer mtime explicitly - 1s filesystem mtime
+        // granularity would otherwise make this racy.
+        std::fs::write(&path, r#"{"x":1}"#).unwrap();
+        let f = std::fs::File::options().write(true).open(&path).unwrap();
+        f.set_modified(SystemTime::now() + Duration::from_secs(60))
+            .unwrap();
+        assert!(w.changed());
+        // The new mtime is latched: a second poll is quiet.
+        assert!(!w.changed());
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn file_watch_missing_file_is_quiet() {
+        let path = temp_path("missing.json");
+        let mut w = FileWatch::new(path.clone());
+        assert!(!w.changed());
+        // A file appearing later still reports a change.
+        std::fs::write(&path, "{}").unwrap();
+        assert!(w.changed());
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn file_watch_deleted_file_reports_no_change() {
+        let path = temp_path("deleted.json");
+        std::fs::write(&path, "{}").unwrap();
+        let mut w = FileWatch::new(path.clone());
+        std::fs::remove_file(&path).ok();
+        // `now` is None -> changed() stays false and `last` is not updated.
+        assert!(!w.changed());
+    }
+}
