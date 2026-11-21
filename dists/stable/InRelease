@@ -5,35 +5,35 @@ Origin: UVie Project
 Label: UVie
 Suite: stable
 Codename: stable
-Date: Wed, 11 Nov 2026 02:03:00 UTC
+Date: Sat, 21 Nov 2026 14:51:24 UTC
 Architectures: amd64
 Components: main
 Description: UVie Vietnamese IME for Linux
 MD5Sum:
- 51cd98c2805d7574d4df95c77936fd1a 2707 main/binary-amd64/Packages
- 82f761092fb8bf4b91a110e1c58347eb 1031 main/binary-amd64/Packages.gz
+ 337065d4ea746fd59e0105f0665d7984 2707 main/binary-amd64/Packages
+ 6414ef00ca959fb7c31a10fdcc8954f2 1031 main/binary-amd64/Packages.gz
  d7ad37429d163262cf3dec050ffdccc3 128 main/binary-amd64/Release
 SHA1:
- 55cf175284283daf2d0f5a3a1e564ac0677353df 2707 main/binary-amd64/Packages
- 9c51ddf21d0f22ce7034a4cd5f272134c1458ee6 1031 main/binary-amd64/Packages.gz
+ f87ffbdf1b0964e83c3c4e7656bc27eb71b23c3c 2707 main/binary-amd64/Packages
+ a613dd26566cd4e1a3c495bf3deaee3d97b0a6bf 1031 main/binary-amd64/Packages.gz
  621e5a83c923b014eaa5f4377a8b405760b7c481 128 main/binary-amd64/Release
 SHA256:
- e9b43c9de7f00423009818b40eca55fc3192d4bde427077253631d99cfb0ffd4 2707 main/binary-amd64/Packages
- 2b675ced74ac7e5e65db8961122a2fa09231c6bb1e52c6009272941a1fcec51a 1031 main/binary-amd64/Packages.gz
+ 8fbdcf9c2ce0c285d9bb6ca0f464ab69245e38e29ec431e8c21d6d3e9cbc1d48 2707 main/binary-amd64/Packages
+ 51a45ce3cbdf0f192f9ec1bff4b014f4a353b3e4ce99b70b8421340cdeb070bd 1031 main/binary-amd64/Packages.gz
  4353b6272bd77dd18257ef62698caaccfae976c141c1fd85c4bb265c700a161d 128 main/binary-amd64/Release
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCgAdFiEEWWZeVevrRhRZgZNKFSQ+7AhQ3p8FAmrzzNQACgkQFSQ+7AhQ
-3p/6UxAAjQC5GMVouCjdGxk5fb8gDwaLFeGJfvKkzkrOvnfQ7meOFN9kmb1pWT1f
-yiAVI8WHVzy8HqrGgRkzDt9atWkQi4H5nrGloY6A+tLjLHyPyq31nIe3FrIPJcdy
-F9drmxQC+yG3TExZ2vSPuJ1AY+nofUQw6rg947UZgihOWus6Ampu4vMqiab9t4dc
-CdBmcz3CiPxiS3xupdSbJ6OtGVd+TA5I1vMvid8LWxoXrbgiw2/W23rII3buEZvY
-wG8NZGCUCPkGuFkDs8NQA/VSPCPBsNUAUILaQkHzO6TK+fnABowUAObrSk3LsYcz
-GXwIf8WFpkP7wTajkg+/bF/xo2zl14zlzYMARj9hrRCwXBnKDPMC6MYQ7fgawJZl
-ozSKr8rvKGeUzqFR2JBALOIlees850Qc20yOI1dxd1GxB6YDLRrP9lo7x8dP4DhK
-gFGBP1wDYhY17iBdneloHCnthXMFUXSK9BlhBfsjXxVeXknACtXHi4xWOJfkUONl
-n0ti1Ti+lMK07W0EjmLPBHuRycecwMvtLeDkRTYF410bm82o23MuY3M5nEY9OcOG
-nVSejCAinV60x7jbadaS5WQlBG8bow55cc40NMiebVp20lKFQyW2UvlFCD5z3znM
-pZVv9Hnd1yDNoeOFeBK80URNEFm15wZG9JQ99WyBlojJgCBYz8M=
-=4itf
+iQIzBAEBCgAdFiEEWWZeVevrRhRZgZNKFSQ+7AhQ3p8FAmsBr+wACgkQFSQ+7AhQ
+3p8qOhAAhwXVINT9++3VlgpQsl3FkheicpCQ+JLIkupM5p0yT9LiQfRqKXtOMypE
+uBfdzpxYrjm1T1FXxX5B/tc383aEnPx3zfxrQHh/GoJKxu6ULpti3s49IINfVA8/
+jpmao3I4eXiB3P5YIN8SMDKLd6lKRS8urJM/GQm2hp3y8qQOpmB0MYztMMW00V+Q
+PAIlTCgrUX3MbyE6AJ7K+5rSlK91vXu2OLrHHOGAB6rPgfCCa6rp/b8CQFgzot4d
+t/89ldQhAm0q9kVjrxXuKc9SEKp7NqKOga8/gfcRha78EZ2tzwPie7Y20X7w8w/X
+IRH4GSMVT1iZ26F5o2aWUJb70r607ei9eYR3NBMZ3322fhSFdqZD1x04eEdN04BE
+TXl7iU8ztkbau33r3TWEfaArlacrOBdTA7Ir+zWfeNiZ9hhGEA9dsxFxB/8i942m
+yarKnrMNvW09sx98EkeSo1stj/TMYA/d+Hn1oa6Edx9SLI9vVd2K5c5PJ5GrvMws
+ilwLB5H7DumpEceBui/A5xqi6ASJjQqeLt4HB9eItNGTjaZvO4p9gWPDwOKPgWr8
+8zHjA4OXnlxXqiZ3kKJlebVzjd80eUj6SX/Kd8Z9T/mwx9CE1M5411omFRiiDlMa
+qAyN7B4USnU/gLmtWhiweeTg/B2odhNyqUviWwoSHr74GDD/Qac=
+=CsAP
 -----END PGP SIGNATURE-----
