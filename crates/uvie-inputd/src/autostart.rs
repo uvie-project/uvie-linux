@@ -55,7 +55,7 @@ mod tests {
         assert!(text.contains("Name=UVie Vietnamese Input"));
         let exec = text.lines().find(|l| l.starts_with("Exec=")).unwrap();
         assert!(!exec["Exec=".len()..].is_empty());
-        std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap()).ok();
+        std::fs::remove_dir_all(path.parent().unwrap()).ok();
     }
 
     #[test]
@@ -65,7 +65,7 @@ mod tests {
         let first = std::fs::read_to_string(&path).unwrap();
         sync(true, &path).unwrap();
         assert_eq!(std::fs::read_to_string(&path).unwrap(), first);
-        std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap()).ok();
+        std::fs::remove_dir_all(path.parent().unwrap()).ok();
     }
 
     #[test]
@@ -77,7 +77,7 @@ mod tests {
         assert!(!path.exists());
         // Removing a missing file is a no-op, not an error.
         sync(false, &path).unwrap();
-        std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap()).ok();
+        std::fs::remove_dir_all(path.parent().unwrap()).ok();
     }
 
     #[test]
@@ -87,6 +87,6 @@ mod tests {
         std::fs::write(&path, "stale").unwrap();
         sync(true, &path).unwrap();
         assert!(std::fs::read_to_string(&path).unwrap().contains("Exec="));
-        std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap()).ok();
+        std::fs::remove_dir_all(path.parent().unwrap()).ok();
     }
 }
