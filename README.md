@@ -41,8 +41,8 @@ clipboard sau 400ms). Tuỳ chọn trong Cài đặt → Nâng cao.
 Engine pin - cả hai crate cùng một tag trong repo uvie-rs:
 
 ```toml
-uvie      = { git = "https://github.com/uvie-project/uvie-rs", tag = "v3.1.5" }
-uvie-host = { git = "https://github.com/uvie-project/uvie-rs", tag = "v3.1.5" }
+uvie      = { git = "https://github.com/uvie-project/uvie-rs", tag = "v3.1.6" }
+uvie-host = { git = "https://github.com/uvie-project/uvie-rs", tag = "v3.1.6" }
 ```
 
 ## Cài đặt
