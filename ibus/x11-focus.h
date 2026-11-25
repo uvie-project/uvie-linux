@@ -76,13 +76,17 @@ static int uvie_x11_focus_connect(UvieX11Focus *f) {
         return 0;
     }
 
-    f->conn = xcb_connect(NULL, NULL);
+    int preferred_screen = 0;
+    f->conn = xcb_connect(NULL, &preferred_screen);
     if (!f->conn || xcb_connection_has_error(f->conn)) {
         uvie_x11_focus_close(f);
         return 0;
     }
     const xcb_setup_t *setup = xcb_get_setup(f->conn);
     xcb_screen_iterator_t screens = xcb_setup_roots_iterator(setup);
+    for (int i = 0; screens.rem && i < preferred_screen; i++) {
+        xcb_screen_next(&screens);
+    }
     if (!screens.rem) {
         uvie_x11_focus_close(f);
         return 0;
