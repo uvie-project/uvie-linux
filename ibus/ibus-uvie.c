@@ -135,13 +135,11 @@ static void ibus_uvie_engine_update_preedit(IBusUvieEngine *uvie) {
         return;
     }
     IBusText *text = ibus_text_new_from_string(uvie->preedit->str);
-    IBusAttrList *attrs = ibus_attr_list_new();
-    /* underline the composing span */
-    ibus_attr_list_append(attrs,
-                          ibus_attr_underline_new(IBUS_ATTR_UNDERLINE_SINGLE,
-                                                  0, uvie->preedit->len));
-    ibus_text_set_attributes(text, attrs);
-    g_object_unref(attrs);
+    /* Underline the composing span. ibus_text_append_attribute keeps the
+     * attr-list ownership inside `text`; setting a floating attr list then
+     * unreffing it leaves `text` with a dangling pointer and crashes IBus. */
+    ibus_text_append_attribute(text, IBUS_ATTR_TYPE_UNDERLINE,
+                               IBUS_ATTR_UNDERLINE_SINGLE, 0, -1);
     ibus_engine_update_preedit_text_with_mode(
         engine, text, g_utf8_strlen(uvie->preedit->str, -1), TRUE,
         IBUS_ENGINE_PREEDIT_COMMIT);
