@@ -58,8 +58,10 @@ libudev-dev libibus-1.0-dev fcitx5-modules-dev libfcitx5core-dev gettext`.
   `!uvie_dispatch_is_composing`. `edit_committed` stays OFF there —
   committed app text can't be rewritten. They share `uvie-config.h`, a
   dumb JSON-substring reader of the same
-  `~/.config/uvie/settings.json`; fcitx5 also honors `excluded_apps` via
-  `InputContext::program()` (ibus gets no app identity).
+  `~/.config/uvie/settings.json`; the engines hot-reload settings/macros
+  on the key path and honor `excluded_apps`/`per_app_language` best-effort
+  (fcitx5 via `InputContext::program()`, ibus via X11 WM_CLASS; Wayland
+  has no app identity).
 - Settings live in `~/.config/uvie/settings.json` (serde_json pretty);
   `uvie-inputd` hot-reloads on mtime change; `uvie-ui` is the writer.
 

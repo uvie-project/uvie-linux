@@ -5,6 +5,7 @@ project(ibus-uvie VERSION 0.1.0 LANGUAGES C)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(IBUS REQUIRED ibus-1.0)
+pkg_check_modules(XCB REQUIRED xcb)
 
 include(GNUInstallDirs)
 
@@ -19,11 +20,13 @@ add_executable(ibus-engine-uvie ibus-uvie.c)
 set_target_properties(ibus-engine-uvie PROPERTIES
     INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}")
 target_include_directories(ibus-engine-uvie PRIVATE
-    ${IBUS_INCLUDE_DIRS} ${UVIE_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR})
+    ${IBUS_INCLUDE_DIRS} ${XCB_INCLUDE_DIRS} ${UVIE_INCLUDE}
+    ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_directories(ibus-engine-uvie PRIVATE ${UVIE_FFI})
-target_link_libraries(ibus-engine-uvie PRIVATE ${IBUS_LIBRARIES} uvie_ffi
-    dl pthread m)
-target_compile_options(ibus-engine-uvie PRIVATE ${IBUS_CFLAGS_OTHER})
+target_link_libraries(ibus-engine-uvie PRIVATE ${IBUS_LIBRARIES}
+    ${XCB_LIBRARIES} uvie_ffi dl pthread m)
+target_compile_options(ibus-engine-uvie PRIVATE ${IBUS_CFLAGS_OTHER}
+    ${XCB_CFLAGS_OTHER})
 
 configure_file(uvie.xml "${CMAKE_CURRENT_BINARY_DIR}/uvie.xml" @ONLY)
 

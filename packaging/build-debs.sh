@@ -81,7 +81,7 @@ r=$ROOT/ibus-uvie
 mkdir -p "$r/usr/lib/ibus" "$r/usr/share/ibus/component"
 cp build-ibus/ibus-engine-uvie "$r/usr/lib/ibus/"
 cp build-ibus/uvie.xml "$r/usr/share/ibus/component/"
-mkdeb ibus-uvie "libuvie-ffi, ibus (>= 1.5)" "uvie-ui" "UVie Vietnamese IME - IBus engine" "$r"
+mkdeb ibus-uvie "libuvie-ffi, ibus (>= 1.5), libxcb1" "uvie-ui" "UVie Vietnamese IME - IBus engine" "$r"
 
 # ---- fcitx5-uvie ------------------------------------------------------
 r=$ROOT/fcitx5-uvie

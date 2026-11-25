@@ -18,11 +18,21 @@
 #include <fcitx/text.h>
 #include <fcitx/userinterface.h>
 
+#include <algorithm>
+#include <cctype>
+
 #include "uvie-config.h"
 
 namespace fcitx {
 
 namespace {
+
+std::string appKey(std::string app) {
+    std::transform(app.begin(), app.end(), app.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return app;
+}
 
 Text preeditText(const std::string &s) {
     Text text;
@@ -132,8 +142,10 @@ unsigned int modsFlags(const KeyStates &states) {
 class UvieState final : public InputContextProperty {
 public:
     UvieState(UvieEngine *engine, InputContext *ic)
-        : engine_(engine), ic_(ic), uvie_(uvie_dispatch_new()) {
-        uvie_config_apply_dispatch(uvie_, &engine_->config());
+        : engine_(engine), ic_(ic), uvie_(uvie_dispatch_new()),
+          app_(appKey(ic->program())) {
+        applyConfig(engine_->config());
+        applyLanguagePolicy();
     }
     ~UvieState() override {
         if (uvie_) {
@@ -147,7 +159,22 @@ public:
         if (keyEvent.isRelease()) {
             return;
         }
+
+        // uvie-ui writes the same settings file as the daemon. Unlike the
+        // daemon there is no timer here, so poll mtimes on the key path.
+        // Fcitx has one dispatcher per input context: even when another
+        // context already reloaded the shared mtime snapshot, this one may
+        // still need the new options/macros applied.
+        bool reloaded = uvie_config_reload_if_changed(&engine_->config());
+        bool stale = applied_settings_mtime_ != engine_->config().settings_mtime ||
+                     applied_macros_mtime_ != engine_->config().macros_mtime;
+        if (reloaded || stale) {
+            applyConfig(engine_->config());
+            commitPending();
+        }
+
         const auto &cfg = engine_->config();
+        applyLanguagePolicy();
 
         // Master toggle off: finalize pending text and pass through.
         if (!cfg.enabled) {
@@ -159,6 +186,7 @@ public:
         if (isToggleChord(keyEvent)) {
             commitPending();
             uvie_dispatch_toggle_language(uvie_);
+            engine_->noteLanguage(app_, uvie_dispatch_get_language(uvie_));
             keyEvent.filterAndAccept();
             return;
         }
@@ -219,6 +247,16 @@ public:
     // uvie-ui changes take effect without an engine restart.
     void applyConfig(const UvieSettings &cfg) {
         uvie_config_apply_dispatch(uvie_, &cfg);
+        applied_settings_mtime_ = cfg.settings_mtime;
+        applied_macros_mtime_ = cfg.macros_mtime;
+    }
+
+    void applyLanguagePolicy() {
+        int language = engine_->languageFor(
+            app_, engine_->config().per_app_language != 0);
+        if (language >= 0) {
+            uvie_dispatch_set_language(uvie_, language);
+        }
     }
 
 private:
@@ -291,7 +329,10 @@ private:
     UvieEngine *engine_;
     InputContext *ic_;
     ::UvieDispatcher *uvie_ = nullptr;
+    std::string app_;
     std::string preedit_;
+    long long applied_settings_mtime_ = -1;
+    long long applied_macros_mtime_ = -1;
 };
 
 UvieEngine::UvieEngine(Instance *instance)

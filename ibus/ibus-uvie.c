@@ -20,6 +20,7 @@
 
 #include "uvie.h"
 #include "uvie-config.h"
+#include "x11-focus.h"
 
 #define IBUS_TYPE_UVIE_ENGINE (ibus_uvie_engine_get_type())
 
@@ -38,9 +39,50 @@ struct _IBusUvieEngine {
      * backspaces never reach further back than this buffer. */
     GString *preedit;
     UvieSettings cfg;
+    UvieX11Focus focus;
 };
 
 G_DEFINE_TYPE(IBusUvieEngine, ibus_uvie_engine, IBUS_TYPE_ENGINE)
+
+/* IBus creates one engine object per input context. Keep the process-wide
+ * language and best-effort per-app memory outside those objects so the
+ * per_app_language setting can choose either behavior. Values are the
+ * uvie_dispatch language encoding plus one because zero is a valid value. */
+static int uvie_global_language;
+static GHashTable *uvie_app_languages;
+
+static GHashTable *uvie_language_memory(void) {
+    if (!uvie_app_languages) {
+        uvie_app_languages =
+            g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+    }
+    return uvie_app_languages;
+}
+
+static void ibus_uvie_apply_language_policy(IBusUvieEngine *uvie,
+                                            const char *app) {
+    if (uvie->cfg.per_app_language) {
+        if (app && *app) {
+            gpointer remembered =
+                g_hash_table_lookup(uvie_language_memory(), app);
+            if (remembered) {
+                uvie_dispatch_set_language(uvie->uvie,
+                                           GPOINTER_TO_INT(remembered) - 1);
+            }
+        }
+    } else {
+        uvie_dispatch_set_language(uvie->uvie, uvie_global_language);
+    }
+}
+
+static void ibus_uvie_note_language(IBusUvieEngine *uvie, const char *app) {
+    int language = uvie_dispatch_get_language(uvie->uvie);
+    uvie_global_language = language;
+    if (uvie->cfg.per_app_language && app && *app) {
+        g_hash_table_replace(uvie_language_memory(), g_strdup(app),
+                             GINT_TO_POINTER(language + 1));
+    }
+}
 
 static void ibus_uvie_engine_update_preedit(IBusUvieEngine *uvie);
 static void ibus_uvie_engine_commit_pending(IBusUvieEngine *uvie);
@@ -65,6 +107,7 @@ static void ibus_uvie_engine_destroy(IBusUvieEngine *uvie) {
         g_string_free(uvie->preedit, TRUE);
         uvie->preedit = NULL;
     }
+    uvie_x11_focus_close(&uvie->focus);
     IBUS_OBJECT_CLASS(ibus_uvie_engine_parent_class)->destroy(
         (IBusObject *)uvie);
 }
@@ -86,6 +129,13 @@ static void ibus_uvie_engine_focus_out(IBusEngine *engine) {
     IBusUvieEngine *uvie = (IBusUvieEngine *)engine;
     ibus_uvie_engine_commit_pending(uvie);
     ibus_engine_hide_preedit_text(engine);
+}
+
+static void ibus_uvie_engine_focus_in(IBusEngine *engine) {
+    IBusUvieEngine *uvie = (IBusUvieEngine *)engine;
+    /* The next key belongs to the newly-focused app; do not let the 200ms
+     * X11 focus cache apply the previous app's exclusion/language state. */
+    uvie->focus.last_query_ms = 0;
 }
 
 static void ibus_uvie_engine_enable(IBusEngine *engine) {
@@ -233,17 +283,16 @@ static unsigned int mods_flags(guint modifiers) {
     return m;
 }
 
-/* The Vi/En toggle chord from settings.json. IBus reports xkb keycodes
- * (evdev+8) on both X11 and Wayland, so match that encoding only —
- * accepting raw evdev too would shadow a sibling physical key's chord
- * (e.g. hotkey 44=Z would also fire on xkb code 44, physical J).
+/* The Vi/En toggle chord from settings.json. The keycode delivered to
+ * IBus engines is the evdev hardware code (for example Z is 44), the
+ * same encoding used by uvie-inputd and stored in settings.json.
  * Exact modifiers only — an extra Super held means the chord belongs
  * to the WM. */
 static gboolean is_toggle_chord(const UvieSettings *cfg, guint keycode,
                                 guint modifiers) {
     if (cfg->hotkey_key <= 0)
         return FALSE;
-    if (keycode != (guint)cfg->hotkey_key + 8)
+    if (keycode != (guint)cfg->hotkey_key)
         return FALSE;
     if (!!(modifiers & IBUS_CONTROL_MASK) != !!cfg->hotkey_ctrl)
         return FALSE;
@@ -265,6 +314,16 @@ static gboolean ibus_uvie_engine_process_key_event(IBusEngine *engine,
         return FALSE;
     }
 
+    /* uvie-ui writes the same settings file as the daemon. Unlike the
+     * daemon there is no timer here, so poll mtimes on the key path. */
+    if (uvie_config_reload_if_changed(&uvie->cfg)) {
+        uvie_config_apply_dispatch(uvie->uvie, &uvie->cfg);
+        ibus_uvie_engine_commit_pending(uvie);
+    }
+
+    const char *app = uvie_x11_active_app(&uvie->focus);
+    ibus_uvie_apply_language_policy(uvie, app);
+
     /* Master toggle off: finalize pending text and pass through. The
      * commit is unconditional — it also resets dispatcher state that the
      * preedit can't show (raw keys buffered with no output yet). */
@@ -277,6 +336,7 @@ static gboolean ibus_uvie_engine_process_key_event(IBusEngine *engine,
     if (is_toggle_chord(&uvie->cfg, keycode, modifiers)) {
         ibus_uvie_engine_commit_pending(uvie);
         uvie_dispatch_toggle_language(uvie->uvie);
+        ibus_uvie_note_language(uvie, app);
         return TRUE;
     }
 
@@ -297,9 +357,13 @@ static gboolean ibus_uvie_engine_process_key_event(IBusEngine *engine,
 
     unsigned int ch = 0;
     int kind = classify_keysym(keyval, &ch);
+    unsigned int ctx = 0;
+    if (uvie_cfg_app_excluded(&uvie->cfg, app)) {
+        ctx |= UVIE_CTX_APP_EXCLUDED;
+    }
     int n = 16;
     int consumed =
-        uvie_dispatch_feed(uvie->uvie, kind, ch, mods_flags(modifiers), 0,
+        uvie_dispatch_feed(uvie->uvie, kind, ch, mods_flags(modifiers), ctx,
                            actions, &n);
     for (int i = 0; i < n; i++) {
         preedit_action(uvie, &actions[i]);
@@ -321,6 +385,7 @@ static void ibus_uvie_engine_class_init(IBusUvieEngineClass *klass) {
     engine_class->process_key_event = ibus_uvie_engine_process_key_event;
     engine_class->reset = ibus_uvie_engine_reset;
     engine_class->focus_out = ibus_uvie_engine_focus_out;
+    engine_class->focus_in = ibus_uvie_engine_focus_in;
     engine_class->enable = ibus_uvie_engine_enable;
 }
 
