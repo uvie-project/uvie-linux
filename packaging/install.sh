@@ -43,11 +43,19 @@ if [ "$WITH_IM" = 1 ]; then
     cmake -S ibus -B build-ibus -DCMAKE_BUILD_TYPE=Release
     cmake --build build-ibus
     sudo cmake --install build-ibus
-    # IBus only scans the component dir below its own datadir; a
-    # /usr/local/cmake install leaves the engine invisible there.
-    ibus_datadir=$(pkg-config --variable=datadir ibus-1.0 2>/dev/null || echo /usr/share)
-    sudo install -Dm644 build-ibus/uvie.xml \
-        "$ibus_datadir/ibus/component/uvie.xml"
+    # IBus scans either IBUS_COMPONENT_PATH or the component dir below its
+    # own datadir; installing only under /usr/local/share can be invisible.
+    if [ -n "${IBUS_COMPONENT_PATH:-}" ]; then
+        IFS=':' read -r -a ibus_component_dirs <<< "$IBUS_COMPONENT_PATH"
+    else
+        ibus_datadir=$(pkg-config --variable=datadir ibus-1.0 2>/dev/null || echo /usr/share)
+        ibus_component_dirs=("$ibus_datadir/ibus/component")
+    fi
+    for component_dir in "${ibus_component_dirs[@]}"; do
+        [ -n "$component_dir" ] || continue
+        sudo install -Dm644 build-ibus/uvie.xml \
+            "$component_dir/uvie.xml"
+    done
 
     echo "==> fcitx5-uvie"
     cmake -S fcitx5 -B build-fcitx5 -DCMAKE_BUILD_TYPE=Release
