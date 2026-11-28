@@ -36,8 +36,19 @@ if [ "$WITH_IM" = 1 ]; then
     if [ -f lib/ibus/ibus-engine-uvie ]; then
         sudo install -Dm755 lib/ibus/ibus-engine-uvie \
             /usr/local/libexec/ibus-engine-uvie
-        sudo install -Dm644 share/ibus/component/uvie.xml \
-            /usr/local/share/ibus/component/uvie.xml
+        # IBus scans either IBUS_COMPONENT_PATH or the component dir below its
+        # own datadir; installing only under /usr/local/share can be invisible.
+        if [ -n "${IBUS_COMPONENT_PATH:-}" ]; then
+            IFS=':' read -r -a ibus_component_dirs <<< "$IBUS_COMPONENT_PATH"
+        else
+            ibus_datadir=$(pkg-config --variable=datadir ibus-1.0 2>/dev/null || echo /usr/share)
+            ibus_component_dirs=("$ibus_datadir/ibus/component")
+        fi
+        for component_dir in "${ibus_component_dirs[@]}"; do
+            [ -n "$component_dir" ] || continue
+            sudo install -Dm644 share/ibus/component/uvie.xml \
+                "$component_dir/uvie.xml"
+        done
     fi
 
     if [ -f lib/fcitx5/libuvie.so ]; then

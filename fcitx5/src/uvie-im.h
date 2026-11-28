@@ -16,6 +16,9 @@
 #include <fcitx/inputmethodengine.h>
 #include <fcitx/instance.h>
 
+#include <string>
+#include <unordered_map>
+
 #include "uvie.h"
 #include "uvie-config.h"
 
@@ -37,12 +40,34 @@ public:
 
     auto &factory() { return factory_; }
     Instance *instance() { return instance_; }
+    UvieSettings &config() { return config_; }
     const UvieSettings &config() const { return config_; }
+
+    // `language` uses the uvie_dispatch ABI encoding: 0 Vietnamese,
+    // 1 English. The app map is process-local memory; Fcitx input
+    // contexts already preserve per-app state while they live, so this
+    // covers newly-created contexts without adding another config file.
+    void noteLanguage(const std::string &app, int language) {
+        global_language_ = language;
+        if (config_.per_app_language && !app.empty()) {
+            app_languages_[app] = language;
+        }
+    }
+
+    int languageFor(const std::string &app, bool perApp) const {
+        if (!perApp) {
+            return global_language_;
+        }
+        auto it = app_languages_.find(app);
+        return it == app_languages_.end() ? -1 : it->second;
+    }
 
 private:
     Instance *instance_;
     FactoryFor<UvieState> factory_;
     UvieSettings config_{};
+    int global_language_ = 0;
+    std::unordered_map<std::string, int> app_languages_;
 };
 
 class UvieFactory : public AddonFactory {

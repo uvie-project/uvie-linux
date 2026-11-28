@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
 
 #include "uvie.h"
 
@@ -30,15 +31,23 @@ typedef struct UvieSettings {
     int english_override;  /* default on, matching Settings::default */
     int auto_capitalize;
     int macro_enabled;
+    int per_app_language;
     /* Vi/En toggle chord: evdev key code + required modifiers. */
     int hotkey_key;
     int hotkey_ctrl;
     int hotkey_alt;
     int hotkey_shift;
-    /* App ids the IME ignores entirely (fcitx5 honors via program()). */
+    /* App ids the IME ignores entirely (fcitx5 uses program(); ibus uses X11 WM_CLASS). */
     char excluded[UVIE_MAX_EXCLUDED][64];
     int excluded_count;
+    /* mtimes of the files represented by this struct; used by the input
+     * method engines because they have no daemon-style file watcher. */
+    long long settings_mtime;
+    long long macros_mtime;
 } UvieSettings;
+
+static void uvie_config_apply_dispatch(UvieDispatcher *d,
+                                       const UvieSettings *cfg);
 
 static const char *uvie_config_path(char *buf, size_t len,
                                     const char *filename) {
@@ -90,6 +99,14 @@ static int uvie_json_int(const char *text, const char *key, int fallback) {
     char *end = NULL;
     long v = strtol(p, &end, 10);
     return end && end != p ? (int)v : fallback;
+}
+
+static long long uvie_file_mtime(const char *path) {
+    struct stat st;
+    if (!path || !*path || stat(path, &st) != 0)
+        return 0;
+    return (long long)st.st_mtim.tv_sec * 1000000000LL +
+           (long long)st.st_mtim.tv_nsec;
 }
 
 static int uvie_json_method(const char *text) {
@@ -182,16 +199,23 @@ static void uvie_config_load(UvieSettings *cfg) {
     cfg->english_override = 1;
     cfg->auto_capitalize = 0;
     cfg->macro_enabled = 0;
+    cfg->per_app_language = 1;
     /* Ctrl+Shift+Z — same default as Settings::hotkey (KEY_Z = 44). */
     cfg->hotkey_key = 44;
     cfg->hotkey_ctrl = 1;
     cfg->hotkey_alt = 0;
     cfg->hotkey_shift = 1;
     cfg->excluded_count = 0;
+    cfg->settings_mtime = 0;
+    cfg->macros_mtime = 0;
 
     uvie_settings_path(path, sizeof(path));
     if (!*path)
         return;
+    cfg->settings_mtime = uvie_file_mtime(path);
+    char macros[1024];
+    uvie_macros_path(macros, sizeof(macros));
+    cfg->macros_mtime = uvie_file_mtime(macros);
     FILE *f = fopen(path, "rb");
     if (!f)
         return;
@@ -213,9 +237,28 @@ static void uvie_config_load(UvieSettings *cfg) {
     cfg->english_override = uvie_json_bool(text, "english_override", 1);
     cfg->auto_capitalize = uvie_json_bool(text, "auto_capitalize", 0);
     cfg->macro_enabled = uvie_json_bool(text, "macro_enabled", 0);
+    cfg->per_app_language = uvie_json_bool(text, "per_app_language", 1);
     uvie_json_hotkey(text, cfg);
     uvie_json_excluded(text, cfg);
     free(text);
+}
+
+/* Re-read settings and macros when either file changed. The IBus/Fcitx5
+ * engines have no daemon timer, so they poll this at the start of the key
+ * path; two stat syscalls per key press are negligible at typing rates. */
+static int uvie_config_reload_if_changed(UvieSettings *cfg) {
+    char settings_path[1024];
+    char macros_path[1024];
+    uvie_settings_path(settings_path, sizeof(settings_path));
+    uvie_macros_path(macros_path, sizeof(macros_path));
+    long long settings_mtime = uvie_file_mtime(settings_path);
+    long long macros_mtime = uvie_file_mtime(macros_path);
+    if (settings_mtime == cfg->settings_mtime &&
+        macros_mtime == cfg->macros_mtime) {
+        return 0;
+    }
+    uvie_config_load(cfg);
+    return 1;
 }
 
 /* Apply settings to the dispatcher and (re)load the macro table. */
